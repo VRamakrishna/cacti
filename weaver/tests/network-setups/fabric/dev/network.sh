@@ -392,7 +392,7 @@ function createChannel() {
   # configtx.yaml is mounted in the cli container, which allows us to use it to
   # create the channel artifacts
   echo "calling createChannel.sh ORDERER_PORT PEER_ORG1_PORT PEER_ORG2_PORT: $ORDERER_PORT $PEER_ORG1_PORT $PEER_ORG2_PORT"
-  scripts/createChannel.sh $CHANNEL_NAME $CLI_DELAY $MAX_RETRY $VERBOSE $NW_CFG_PATH $ORDERER_PORT $PEER_ORG1_PORT $PEER_ORG2_PORT $COMPOSE_PROJECT_NAME $PROFILE
+  scripts/createChannel.sh $CHANNEL_NAME $CLI_DELAY $MAX_RETRY $VERBOSE $NW_CFG_PATH $ORDERER_PORT $PEER_ORG1_PORT $PEER_ORG2_PORT $COMPOSE_PROJECT_NAME $DOCKER_PROFILES
   if [ $? -ne 0 ]; then
     echo "Error !!! Create channel failed"
     exit 1
@@ -400,13 +400,26 @@ function createChannel() {
 
 }
 
-## Call the script to isntall and instantiate a chaincode on the channel
+## Call the script to install and instantiate a chaincode on the channel
 function deployCC() {
   echo "In function deployCC $APP_ROOT for $COMPOSE_PROJECT_NAME"
-  scripts/deployCC.sh $CHANNEL_NAME $CC_SRC_LANGUAGE $VERSION $CLI_DELAY $MAX_RETRY $VERBOSE $CC_CHAIN_CODE $NW_CFG_PATH $PEER_ORG1_PORT $PEER_ORG2_PORT $ORDERER_PORT $APP_ROOT $COMPOSE_PROJECT_NAME $PROFILE
+  scripts/deployCC.sh $CHANNEL_NAME $CC_SRC_LANGUAGE $VERSION $CLI_DELAY $MAX_RETRY $VERBOSE $CC_CHAIN_CODE $NW_CFG_PATH $PEER_ORG1_PORT $PEER_ORG2_PORT $ORDERER_PORT $APP_ROOT $COMPOSE_PROJECT_NAME $DOCKER_PROFILES $PDC_CONFIG
 
   if [ $? -ne 0 ]; then
     echo "ERROR !!! Deploying chaincode failed"
+    exit 1
+  fi
+
+  exit 0
+}
+
+## Call the script to invoke a chaincode function on the channel
+function invokeCC() {
+  echo "In function invokeCC $APP_ROOT for $COMPOSE_PROJECT_NAME"
+  scripts/invokeCC.sh $CHANNEL_NAME $CC_SRC_LANGUAGE $VERSION $CLI_DELAY $MAX_RETRY $VERBOSE $CC_CHAIN_CODE $NW_CFG_PATH $PEER_ORG1_PORT $PEER_ORG2_PORT $ORDERER_PORT $APP_ROOT $COMPOSE_PROJECT_NAME $DOCKER_PROFILES $TX_MODE $TX_TARGET_ORG
+
+  if [ $? -ne 0 ]; then
+    echo "ERROR !!! Invoking chaincode function failed"
     exit 1
   fi
 
@@ -495,6 +508,9 @@ CAIMAGETAG="latest"
 DATABASE="leveldb"
 # default chaincode
 CC_CHAIN_CODE=""
+PDC_CONFIG=""
+TX_MODE=""
+TX_TARGET_ORG="1"
 #role network1/network2
 ROLE="network1"
 ROLE_FILE=""
@@ -544,6 +560,11 @@ if [[ $# -ge 1 ]] ; then
 
   if [[ "$key" == "deployCC" ]]; then
       export MODE="deployCC"
+      shift
+  fi
+
+  if [[ "$key" == "invokeCC" ]]; then
+      export MODE="invokeCC"
       shift
   fi
 
@@ -609,6 +630,18 @@ while [[ $# -ge 1 ]] ; do
     ;;
   -ch )
     CC_CHAIN_CODE="$2"
+    shift
+    ;;
+  -pdc )
+    PDC_CONFIG="$2"
+    shift
+    ;;
+  -tm )
+    TX_MODE="$2"
+    shift
+    ;;
+  -tto )
+    TX_TARGET_ORG="$2"
     shift
     ;;
   -nw )
@@ -731,6 +764,9 @@ elif [ "$MODE" == "clean" ]; then
 elif [ "$MODE" == "deployCC" ]; then
   echo "deploying chaincode on channel '${CHANNEL_NAME}'"
   echo
+elif [ "$MODE" == "invokeCC" ]; then
+  echo "invoking chaincode function on channel '${CHANNEL_NAME}'"
+  echo
 else
   printHelp
   exit 1
@@ -772,6 +808,8 @@ elif [ "${MODE}" == "createChannel" ]; then
   createChannel
 elif [ "${MODE}" == "deployCC" ]; then
   deployCC $CC_CHAIN_CODE $ORDERER_PORT
+elif [ "${MODE}" == "invokeCC" ]; then
+  invokeCC $CC_CHAIN_CODE $ORDERER_PORT
 elif [ "${MODE}" == "down" ]; then
  networkDown
 elif [ "${MODE}" == "clean" ]; then

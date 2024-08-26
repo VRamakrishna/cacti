@@ -17,6 +17,11 @@ message InteropPayload {
   string nonce = 5;
 }
 
+enum EncryptionMechanism {
+  ECIES = 0;
+  DBE = 1;
+}
+
 message ConfidentialPayload {
   bytes encrypted_payload = 1;
   enum HashType {

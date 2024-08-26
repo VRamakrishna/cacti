@@ -18,6 +18,7 @@ ORD_P=${11}
 APP_R=${12}
 NW_NAME=${13}
 PROFILE="${14}"
+PDC_CONFIG="${15}"
 
 : ${CHANNEL_NAME:="mychannel"}
 : ${CC_SRC_LANGUAGE:="golang"}
@@ -31,12 +32,14 @@ CC_CHAIN_CODE=`echo "$CC_CHAIN_CODE" | tr [:upper:] [:lower:]`
 
 CC_END_POLICY="--signature-policy AND('Org1MSP.member')"
 if [ "$PROFILE" = "2-nodes" ]; then
-	if [ "$CC_CHAIN_CODE" = "interop" ]; then
+	echo "Chaincode = "$CC_CHAIN_CODE
+	if [ "$CC_CHAIN_CODE" = "interop" -o "$CC_CHAIN_CODE" = "privateassettransfer" ]; then
 		CC_END_POLICY="--signature-policy OR('Org1MSP.member','Org2MSP.member')"
 	else
 		CC_END_POLICY="--signature-policy AND('Org1MSP.member','Org2MSP.member')"
 	fi
 fi
+echo "Endorsement policy = "$CC_END_POLICY
 
 echo " - CHANNEL_NAME           :      ${CHANNEL_NAME}"
 echo " - CC_SRC_LANGUAGE        :      ${CC_SRC_LANGUAGE}"
@@ -57,12 +60,10 @@ if [ "$CC_SRC_LANGUAGE" = "go" -o "$CC_SRC_LANGUAGE" = "golang" ] ; then
     CC_RUNTIME_LANGUAGE=golang
     #CC_SRC_PATH="./chaincode/fabcar/go/"
     CC_SRC_PATH="$APP_R/fabric/shared/chaincode/$CC_CHAIN_CODE"
+    if [ "$PDC_CONFIG" != "" ] ; then
+        PDC_CONFIG="--collections-config $CC_SRC_PATH/$PDC_CONFIG"
+    fi
     echo "Preparing for deployment of :" $CC_SRC_PATH
-    #pushd ./chaincode/snamcc
-    #GO111MODULE=on go mod init snamcc
-    #GO111MODULE=on go mod vendor
-    #popd
-    #echo Finished vendoring Go dependencies
     sleep 1
 
 elif [ "$CC_SRC_LANGUAGE" = "javascript" ]; then
@@ -164,7 +165,7 @@ approveForMyOrg() {
     #echo "ORDERER_PORT = $ORDERER_PORT"
 	setGlobals $ORG $P_ADDR $NW_NAME
 	set -x
-	peer lifecycle chaincode approveformyorg -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA --channelID $CHANNEL_NAME --name $CC_CHAIN_CODE --version ${VERSION} --init-required $CC_END_POLICY --package-id ${PACKAGE_ID} --sequence ${VERSION} >&log.txt
+	peer lifecycle chaincode approveformyorg -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA --channelID $CHANNEL_NAME --name $CC_CHAIN_CODE --version ${VERSION} --init-required $CC_END_POLICY --package-id ${PACKAGE_ID} --sequence ${VERSION} ${PDC_CONFIG} >&log.txt
 	set +x
 	cat log.txt
 	verifyResult $res "Chaincode definition approved on peer0.org${ORG} on channel '$CHANNEL_NAME' failed"
@@ -194,7 +195,7 @@ checkCommitReadiness() {
 	    sleep $DELAY
 	    echo "Attempting to check the commit readiness of the chaincode definition on peer0.org${ORG} secs"
 	    set -x
-	    peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name $CC_CHAIN_CODE --version ${VERSION} --sequence ${VERSION} --output json --init-required $CC_END_POLICY >&log.txt
+	    peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name $CC_CHAIN_CODE --version ${VERSION} --sequence ${VERSION} --output json --init-required $CC_END_POLICY ${PDC_CONFIG} >&log.txt
 	    res=$?
 	    set +x
 	    let rc=0
@@ -232,7 +233,7 @@ commitChaincodeDefinition() {
     #echo "Peer pram: "$PEER_CONN_PARMS
     #setGlobals $ORG $P_ADDR
 	set -x
-	peer lifecycle chaincode commit -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA --channelID $CHANNEL_NAME --name $CC_CHAIN_CODE $PEER_CONN_PARMS --version ${VERSION} --sequence ${VERSION} --init-required $CC_END_POLICY >&log.txt
+	peer lifecycle chaincode commit -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA --channelID $CHANNEL_NAME --name $CC_CHAIN_CODE $PEER_CONN_PARMS --version ${VERSION} --sequence ${VERSION} --init-required $CC_END_POLICY ${PDC_CONFIG} >&log.txt
 	res=$?
 	set +x
 	cat log.txt
@@ -287,13 +288,13 @@ chaincodeInvokeInit() {
 	# it using the "-o" option
 	set -x
 	if [ "$CC_CHAIN_CODE" = "interop" ]; then
-        if [ "$E2E_CONFIDENTIALITY" = "true" ]; then
-            echo "Launching interop CC with end-to-end confidentiality"
-            peer chaincode invoke -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_CHAIN_CODE $PEER_CONN_PARMS --isInit -c '{"function":"initLedger","Args":["true"]}' >&log.txt
-        else
-            echo "Launching interop CC without end-to-end confidentiality"
-            peer chaincode invoke -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_CHAIN_CODE $PEER_CONN_PARMS --isInit -c '{"function":"initLedger","Args":[]}' >&log.txt
-        fi
+		if [ "$E2E_CONFIDENTIALITY" = "true" ]; then
+			echo "Launching interop CC with end-to-end confidentiality"
+			peer chaincode invoke -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_CHAIN_CODE $PEER_CONN_PARMS --isInit -c '{"function":"initLedger","Args":["true"]}' >&log.txt
+		else
+			echo "Launching interop CC without end-to-end confidentiality"
+			peer chaincode invoke -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_CHAIN_CODE $PEER_CONN_PARMS --isInit -c '{"function":"initLedger","Args":[]}' >&log.txt
+		fi
 	elif [ "$CC_CHAIN_CODE" = "simplestate" ]; then
         peer chaincode invoke -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_CHAIN_CODE $PEER_CONN_PARMS --isInit -c '{"function":"create","Args":["a","b"]}' >&log.txt
 	elif [ "$CC_CHAIN_CODE" = "simplestatewithacl" ]; then
@@ -314,8 +315,10 @@ chaincodeInvokeInit() {
         peer chaincode invoke -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_CHAIN_CODE $PEER_CONN_PARMS --isInit -c '{"function":"initLedger","Args":["Bond"]}' >&log.txt
 	elif [ "$CC_CHAIN_CODE" = "simpleassetandinterop" ] && [ "$NW_NAME" = "network2" ]; then
         peer chaincode invoke -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_CHAIN_CODE $PEER_CONN_PARMS --isInit -c '{"function":"initLedger","Args":["Token"]}' >&log.txt
-    else
-        peer chaincode invoke -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_CHAIN_CODE $PEER_CONN_PARMS --isInit -c '{"function":"initLedger","Args":[""]}' >&log.txt
+	else
+		if [ "$CC_CHAIN_CODE" != "privateassettransfer" ]; then
+			peer chaincode invoke -o localhost:${ORD_P} --ordererTLSHostnameOverride orderer.$NW_NAME.com --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_CHAIN_CODE $PEER_CONN_PARMS --isInit -c '{"function":"initLedger","Args":[""]}' >&log.txt
+		fi
 	fi
 	res=$?
 	set +x

@@ -27,12 +27,12 @@ start-interop-local: start-interop-network1-local start-interop-network2-local
 
 .PHONY: start-network1
 start-network1:	.fabric-setup artifacts-network1 setup-cc
-	./network.sh up createChannel -ca -nw network1 -p $(PROFILE)  -i $(FABRIC_VERSION) -cai $(FABRIC_CA_VERSION)
+	./network.sh up createChannel -ca -nw network1 -p $(PROFILE) -i $(FABRIC_VERSION) -cai $(FABRIC_CA_VERSION)
 	./network.sh deployCC -ch $(CHAINCODE_NAME) -nw network1 -p $(PROFILE)
 
 .PHONY: start-network1-local
 start-network1-local: .fabric-setup artifacts-network1 setup-cc-local
-	./network.sh up createChannel -ca -nw network1 -p $(PROFILE)  -i $(FABRIC_VERSION) -cai $(FABRIC_CA_VERSION)
+	./network.sh up createChannel -ca -nw network1 -p $(PROFILE) -i $(FABRIC_VERSION) -cai $(FABRIC_CA_VERSION)
 	./network.sh deployCC -ch $(CHAINCODE_NAME) -nw network1 -p $(PROFILE)
 
 .PHONY: start-network2
@@ -59,19 +59,19 @@ start-interop-network2-local: setup-interop-cc-local start-network2-local setup-
 
 .PHONY: setup-interop-network1
 setup-interop-network1: setup-interop-cc
-	./network.sh deployCC -ch interop -nw network1 -p $(PROFILE)
+	./network.sh deployCC -ch interop -nw network1 -p $(PROFILE) -pdc collections_config.json
 
 .PHONY: setup-interop-network1-local
 setup-interop-network1-local: setup-interop-cc-local
-	./network.sh deployCC -ch interop -nw network1 -p $(PROFILE)
+	./network.sh deployCC -ch interop -nw network1 -p $(PROFILE) -pdc collections_config.json
 
 .PHONY: setup-interop-network2
 setup-interop-network2: setup-interop-cc
-	./network.sh deployCC -ch interop -nw network2 -p $(PROFILE)
+	./network.sh deployCC -ch interop -nw network2 -p $(PROFILE) -pdc collections_config.json
 
 .PHONY: setup-interop-network2-local
 setup-interop-network2-local: setup-interop-cc-local
-	./network.sh deployCC -ch interop -nw network2 -p $(PROFILE)
+	./network.sh deployCC -ch interop -nw network2 -p $(PROFILE) -pdc collections_config.json
 
 .PHONY: setup-interop-cc
 setup-interop-cc:

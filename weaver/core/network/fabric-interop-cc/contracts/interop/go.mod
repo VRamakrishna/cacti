@@ -3,6 +3,7 @@ module github.com/hyperledger/cacti/weaver/core/network/fabric-interop-cc/contra
 go 1.20
 
 require (
+	github.com/IBM/mathlib v0.0.2
 	github.com/ethereum/go-ethereum v1.13.15
 	github.com/golang/protobuf v1.5.4
 	github.com/hyperledger/cacti/weaver/common/protos-go/v2 v2.0.0-rc.3
@@ -12,6 +13,7 @@ require (
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20230228194215-b84622ba6a7a
 	github.com/hyperledger/fabric-contract-api-go v1.2.1
 	github.com/hyperledger/fabric-protos-go v0.3.3
+	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.24.0
@@ -19,7 +21,10 @@ require (
 )
 
 require (
+	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
+	github.com/consensys/bavard v0.1.13 // indirect
+	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
@@ -30,9 +35,11 @@ require (
 	github.com/gobuffalo/packd v1.0.1 // indirect
 	github.com/gobuffalo/packr v1.30.1 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
+	github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
@@ -45,4 +52,5 @@ require (
 	google.golang.org/grpc v1.64.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	rsc.io/tmplfunc v0.0.3 // indirect
 )
