@@ -27,6 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/cacti/weaver/common/protos-go/v2/common"
+	math "github.com/IBM/mathlib"
 )
 
 const (
@@ -314,6 +315,7 @@ func generateHMAC(data, key []byte) ([]byte, error) {
 	return hmacHash.Sum(nil), nil
 }
 
+// This is the encryption function corresponding to the ECIES (plus HMAC) scheme
 func generateConfidentialInteropPayloadAndHash(message []byte, cert string) ([]byte, error) {
 	// Generate a 16-byte random key for the HMAC
 	hashKey, err := generateSecureRandomKey(16)
@@ -355,4 +357,15 @@ func generateConfidentialInteropPayloadAndHash(message []byte, cert string) ([]b
 		return []byte(""), err
 	}
 	return confidentialPayloadBytes, nil
+}
+
+// This is the encryption function corresponding to the DBE scheme
+func generateDBEPayload(srsBytes, message []byte) ([]byte, error) {
+	// TODO
+	return nil, nil
+}
+
+func decryptDBEPayload(ciphertext, srsBytes []byte, secret *math.Zr) ([]byte, error) {
+	// TODO
+	return nil, nil
 }
