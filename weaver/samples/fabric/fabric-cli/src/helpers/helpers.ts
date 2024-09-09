@@ -44,6 +44,7 @@ const configKeys = [
   "channelName",
   "chaincode",
   "aclPolicyPrincipalType",
+  "numOrgs",
 ];
 
 const signMessage = (message, privateKey) => {
@@ -716,6 +717,7 @@ const getNetworkConfig = (
   aclPolicyPrincipalType?: string;
   channelName?: string;
   chaincode?: string;
+  numOrgs: number;
 } => {
   const configPath = process.env.CONFIG_PATH
     ? path.join(process.env.CONFIG_PATH)
@@ -734,6 +736,7 @@ const getNetworkConfig = (
         aclPolicyPrincipalType: "",
         channelName: "",
         chaincode: "",
+        numOrgs: -1,
       };
     }
     return configJSON[networkId];
@@ -749,6 +752,7 @@ const getNetworkConfig = (
       aclPolicyPrincipalType: "",
       channelName: "",
       chaincode: "",
+      numOrgs: -1,
     };
   }
 };
