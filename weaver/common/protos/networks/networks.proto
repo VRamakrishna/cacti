@@ -9,6 +9,7 @@ package networks.networks;
 import "common/ack.proto";
 import "common/state.proto";
 import "common/events.proto";
+import "common/query.proto";
 
 option java_package = "org.hyperledger.cacti.weaver.protos.networks.networks";
 option go_package = "github.com/hyperledger/cacti/weaver/common/protos-go/v2/networks";
@@ -62,6 +63,7 @@ message NetworkQuery {
   string nonce = 7;
   string requesting_org = 8;
   bool confidential = 9;
+  EncryptionInfo encryptionInfo = 10;
 }
 
 // Below message is used for network/client to dest-relay communication

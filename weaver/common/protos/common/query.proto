@@ -20,4 +20,19 @@ message Query {
   string request_id = 8;
   string requesting_org = 9;
   bool confidential = 10;
+  EncryptionInfo encryptionInfo = 11;
+}
+
+enum EncryptionMechanism {
+  ECIES = 0;
+  DBE = 1;
+}
+
+message EncryptionInfo {
+  EncryptionMechanism mechanism = 1;
+
+  // Either:
+  //    (1) an X.509 certificate, if 'encryptionMechanism' == 'ECIES', or
+  //    (2) a base64 encoding of an SRS structure (byte array or byte array + integer count), ie 'encryptionMechanism' == 'DBE'
+  bytes key = 2;
 }

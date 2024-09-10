@@ -6,6 +6,8 @@ syntax = "proto3";
 
 package common.interop_payload;
 
+import "common/query.proto";
+
 option java_package = "org.hyperledger.cacti.weaver.protos.common.interop_payload";
 option go_package = "github.com/hyperledger/cacti/weaver/common/protos-go/v2/common";
 
@@ -13,13 +15,8 @@ message InteropPayload {
   bytes payload = 1;
   string address = 2;
   bool confidential = 3;
-  string requestor_certificate = 4;
+  EncryptionInfo encryptionInfo = 4;
   string nonce = 5;
-}
-
-enum EncryptionMechanism {
-  ECIES = 0;
-  DBE = 1;
 }
 
 message ConfidentialPayload {

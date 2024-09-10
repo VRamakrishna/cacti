@@ -365,6 +365,7 @@ func generateDBEPayload(srsBytes, message []byte) ([]byte, error) {
 	return nil, nil
 }
 
+// This is the decryption function corresponding to the DBE scheme
 func decryptDBEPayload(ciphertext, srsBytes []byte, secret *math.Zr) ([]byte, error) {
 	// TODO
 	return nil, nil
