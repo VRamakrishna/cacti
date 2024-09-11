@@ -223,9 +223,7 @@ checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
 
 [[package]]
 name = "cacti_weaver_protos_rs"
-version = "2.0.0-rc.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c77881c6ad2afd37d4744801c3d68516a32cf52499b73b056596a9653f04bee9"
+version = "2.0.0-rc.3"
 dependencies = [
  "prost",
  "serde 1.0.201",

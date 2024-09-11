@@ -207,6 +207,7 @@ impl DriverCommunication for DriverCommunicationService {
             nonce: received_query.nonce,
             request_id: received_query.request_id,
             confidential: received_query.confidential,
+            encryption_info: received_query.encryption_info,
         };
         return Ok(Response::new(signed_query));
     }

@@ -281,6 +281,7 @@ impl Network for NetworkService {
             nonce: network_query.nonce,
             request_id: request_id.to_string(),
             confidential: network_query.confidential,
+            encryption_info: network_query.encryption_info,
         };
         let event_subscription: EventSubscription = EventSubscription {
             event_matcher: network_event_subscription.event_matcher,
@@ -448,6 +449,7 @@ impl Network for NetworkService {
                 nonce: network_query.nonce,
                 request_id: request_id.to_string(),
                 confidential: network_query.confidential,
+                encryption_info: network_query.encryption_info,
             };
             let event_subscription: EventSubscription = EventSubscription {
                 event_matcher: network_event_subscription.event_matcher,
@@ -851,6 +853,7 @@ async fn data_transfer_call(
         nonce: network_query.nonce,
         request_id: request_id.to_string(),
         confidential: network_query.confidential,
+        encryption_info: network_query.encryption_info,
     });
     println!("Query: {:?}", query_request);
     let response = client.request_state(query_request).await?;

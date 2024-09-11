@@ -4,6 +4,7 @@
 
 mod relay_proto;
 use weaverpb::common::ack::ack;
+use weaverpb::common::query::{EncryptionInfo, EncryptionMechanism};
 use weaverpb::common::state::{request_state, view_payload, ViewPayload, View, Meta, meta};
 use weaverpb::common::events::{event_subscription_state, EventMatcher, EventPublication, event_publication, ContractTransaction};
 use weaverpb::relay::events::{event_publish_client::EventPublishClient};
@@ -49,6 +50,10 @@ async fn datasharing() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     let channel = get_tls_channel(get_url(&args)).await?;
     let mut network_client = NetworkClient::new(channel);
+    let encryption_info = EncryptionInfo {
+        mechanism: EncryptionMechanism::Ecies.into(),
+        key: b"".to_vec(),
+    };
     let request = tonic::Request::new(NetworkQuery {
         policy: vec!["test".to_string()],
         address: args[2].to_string(),
@@ -59,6 +64,7 @@ async fn datasharing() -> Result<(), Box<dyn std::error::Error>> {
         requestor_signature: "test".to_string(),
         nonce: "test".to_string(),
         confidential: false,
+        encryption_info: Some(encryption_info),
     });
     let response = network_client.request_state(request).await?;
     println!("RESPONSE={:?}", response);
@@ -128,6 +134,10 @@ async fn event_suscribe(driver: bool) -> Result<(), Box<dyn std::error::Error>> 
     let args: Vec<String> = env::args().collect();
     let channel = get_tls_channel(get_url(&args)).await?;
     let mut network_client = NetworkClient::new(channel);
+    let encryption_info = EncryptionInfo {
+        mechanism: EncryptionMechanism::Ecies.into(),
+        key: b"".to_vec(),
+    };
     let network_query = NetworkQuery {
         policy: vec!["test".to_string()],
         address: args[2].to_string(),
@@ -138,6 +148,7 @@ async fn event_suscribe(driver: bool) -> Result<(), Box<dyn std::error::Error>> 
         requestor_signature: "test".to_string(),
         nonce: "test".to_string(),
         confidential: false,
+        encryption_info: Some(encryption_info),
     };
     let event_matcher = EventMatcher {
         event_type: 0,
@@ -206,6 +217,10 @@ async fn event_unsuscribe(request_id: String, driver: bool) -> Result<(), Box<dy
     let args: Vec<String> = env::args().collect();
     let channel = get_tls_channel(get_url(&args)).await?;
     let mut network_client = NetworkClient::new(channel);
+    let encryption_info = EncryptionInfo {
+        mechanism: EncryptionMechanism::Ecies.into(),
+        key: b"".to_vec(),
+    };
     let network_query = NetworkQuery {
         policy: vec!["test".to_string()],
         address: args[2].to_string(),
@@ -216,6 +231,7 @@ async fn event_unsuscribe(request_id: String, driver: bool) -> Result<(), Box<dy
         requestor_signature: "test".to_string(),
         nonce: "test".to_string(),
         confidential: false,
+        encryption_info: Some(encryption_info),
     };
     let event_matcher = EventMatcher {
         event_type: 0,
