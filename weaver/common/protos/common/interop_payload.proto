@@ -15,7 +15,7 @@ message InteropPayload {
   bytes payload = 1;
   string address = 2;
   bool confidential = 3;
-  EncryptionInfo encryptionInfo = 4;
+  common.query.EncryptionInfo encryptionInfo = 4;
   string nonce = 5;
 }
 

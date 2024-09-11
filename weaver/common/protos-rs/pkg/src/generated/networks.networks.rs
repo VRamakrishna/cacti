@@ -45,6 +45,10 @@ pub struct NetworkQuery {
     pub requesting_org: ::prost::alloc::string::String,
     #[prost(bool, tag = "9")]
     pub confidential: bool,
+    #[prost(message, optional, tag = "10")]
+    pub encryption_info: ::core::option::Option<
+        super::super::common::query::EncryptionInfo,
+    >,
 }
 /// Below message is used for network/client to dest-relay communication
 #[derive(serde::Serialize, serde::Deserialize)]

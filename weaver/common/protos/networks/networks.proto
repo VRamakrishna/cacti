@@ -63,7 +63,7 @@ message NetworkQuery {
   string nonce = 7;
   string requesting_org = 8;
   bool confidential = 9;
-  EncryptionInfo encryptionInfo = 10;
+  common.query.EncryptionInfo encryptionInfo = 10;
 }
 
 // Below message is used for network/client to dest-relay communication
