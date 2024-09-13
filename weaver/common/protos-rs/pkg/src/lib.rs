@@ -31,6 +31,9 @@ pub mod common {
     pub mod state {
         include!(concat!("./generated", "/common.state.rs"));
     }
+    pub mod crypto {
+        include!(concat!("./generated", "/common.crypto.rs"));
+    }
     pub mod query {
         include!(concat!("./generated", "/common.query.rs"));
     }

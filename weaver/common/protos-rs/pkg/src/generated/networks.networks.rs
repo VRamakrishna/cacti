@@ -47,7 +47,7 @@ pub struct NetworkQuery {
     pub confidential: bool,
     #[prost(message, optional, tag = "10")]
     pub encryption_info: ::core::option::Option<
-        super::super::common::query::EncryptionInfo,
+        super::super::common::crypto::EncryptionInfo,
     >,
 }
 /// Below message is used for network/client to dest-relay communication
