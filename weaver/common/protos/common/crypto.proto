@@ -1,0 +1,28 @@
+// Copyright IBM Corp. All Rights Reserved.
+//
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package common.crypto;
+option java_package = "org.hyperledger.cacti.weaver.protos.common.crypto";
+option go_package = "github.com/hyperledger/cacti/weaver/common/protos-go/v2/common";
+
+enum EncryptionMechanism {
+  ECIES = 0;
+  DBE = 1;
+}
+
+message DBEKey {
+  bytes srs = 1;
+  uint32 version = 2;
+}
+
+message EncryptionInfo {
+  EncryptionMechanism mechanism = 1;
+
+  // Either:
+  //    (1) a serialized X.509 certificate, if 'encryptionMechanism' == 'ECIES', or
+  //    (2) a base64 encoding of an SRS structure as 'DBEKey', if 'encryptionMechanism' == 'DBE'
+  bytes key = 2;
+}
