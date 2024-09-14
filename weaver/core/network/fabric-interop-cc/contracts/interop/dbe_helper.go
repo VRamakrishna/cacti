@@ -169,7 +169,7 @@ func (s *SmartContract) ValidateDbeInitVal(ctx contractapi.TransactionContextInt
 		}
 		initRequestOrgKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeInitSRSOrgKey})
 		if err != nil {
-			return fmt.Errorf("Error creating composite key for InitRequest Org: %+v. InitRequest verification error: %+v", err)
+			return fmt.Errorf("Error creating composite key for InitRequest Org: %+v. InitRequest verification error: %+v", err, retErr)
 		}
 		err = ctx.GetStub().DelState(initRequestOrgKey)
 		if err != nil {
@@ -262,7 +262,7 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 	if err != nil {
 		return err
 	}
-	// We don't care what the value is as long as it isn't empty
+	// The value should be the entityId (or the counter), but here we don't care what it is as long as it isn't empty
 	if updateRequestOrgPresenceBytes != nil && len(updateRequestOrgPresenceBytes) != 0 {
 		return fmt.Errorf("Invalid transaction. UpdateRequest already recorded for org MSP ID %s.", orgMSPID)
 	}
@@ -287,7 +287,7 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 		return fmt.Errorf("Error marshalling the secret for entity Id %d: %+v", entityId, err)
 	}
 
-	// Record 'secret' in ths peer's org's PDC
+	// Record 'secret' in this peer's org's PDC
 	err = recordSecretInPrivateCollection(ctx, secretBytes)
 	if err != nil {
 		return err
@@ -321,7 +321,7 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 	}
 
 	// Record the Org MSPID of the peer creating this UpdateRequest
-	err = ctx.GetStub().PutState(updateRequestOrgPresenceKey, []byte("true"))
+	err = ctx.GetStub().PutState(updateRequestOrgPresenceKey, []byte(entityIdStr))
 	if err != nil {
 		return err
 	}
@@ -343,7 +343,7 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 }
 
 func (s *SmartContract) ValidateDbeUpdateVal(ctx contractapi.TransactionContextInterface) error {
-	// Record the latest entityId on ledger for lookup
+	// Read the latest entityId on ledger
 	updateRequestLatestEntityIdKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSLatestEntityIdKey})
 	if err != nil {
 		return fmt.Errorf("Error creating composite key for UpdateRequest latest entity Id: %+v", err)
@@ -461,6 +461,77 @@ func (s *SmartContract) ValidateDbeUpdateVal(ctx contractapi.TransactionContextI
 	return ctx.GetStub().PutState(updateRequestStatusKey, []byte(dbeSRSValidated))
 }
 
+// TODO: Chaincode function: Read DistPublicParameters and version from latest UpdateRequest
+func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionContextInterface) error {
+	// Read the latest entityId on ledger
+	updateRequestLatestEntityIdKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSLatestEntityIdKey})
+	if err != nil {
+		return fmt.Errorf("Error creating composite key for UpdateRequest latest entity Id: %+v", err)
+	}
+	latestEntityIdBytes, err := ctx.GetStub().GetState(updateRequestLatestEntityIdKey)
+	if err != nil {
+		return err
+	}
+	if latestEntityIdBytes == nil || len(latestEntityIdBytes) == 0 {
+		return fmt.Errorf("Invalid transaction. No UpdateRequest recorded yet.")
+	}
+	latestEntityIdStr := string(latestEntityIdBytes)
+	latestEntityId, err := strconv.Atoi(latestEntityIdStr)
+	if err != nil {
+		return err
+	}
+	log.Printf("Latest entity Id retrieved from ledger = %d.", latestEntityId)
+
+	// Lookup UpdateRequest corresponding to 'latestEntityId'
+	updateRequestKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, latestEntityIdStr})
+	if err != nil {
+		return fmt.Errorf("Error creating composite key for UpdateRequest for latest entity Id %d: %+v", latestEntityId, err)
+	}
+	updateRequestBytes, err := ctx.GetStub().GetState(updateRequestKey)
+	if err != nil {
+		return err
+	}
+	if updateRequestBytes == nil || len(updateRequestBytes) != 0 {
+		return fmt.Errorf("Invalid ledger state. UpdateRequest not recorded for latest entity Id %d.", latestEntityId)
+	}
+
+	// Lookup the status.
+	updateRequestStatusKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSStatusKey, latestEntityIdStr})
+	if err != nil {
+		return fmt.Errorf("Error creating composite key for UpdateRequest status for entity Id %d: %+v", latestEntityId, err)
+	}
+	updateRequestStatusBytes, err := ctx.GetStub().GetState(updateRequestStatusKey)
+	if err != nil {
+		return err
+	}
+	if updateRequestStatusBytes == nil || len(updateRequestStatusBytes) == 0 {
+		return fmt.Errorf("Empty UpdateRequest status recorded on the ledger for entity Id %d.", latestEntityId)
+	}
+	// If status is 'VALIDATED`, return the parameters for the update request fetched above.
+	if string(updateRequestStatusBytes) == dbeSRSValidated {
+		// TODO
+		// Unmarshal 'updateRequestBytes' using func unmarshalDBEUpdateVal to 'updateRequest'
+		// Marshal updateRequest.NewDistPublicParameters to a byte array
+		// Return a serialized form of a structure containing the above plus 'latestEntityId'
+		// (Both the above are needed for the client to create an 'EncryptionInfo' in the NetworkQuery to the relay)
+	} else {
+		// TODO
+		// The latest update request has not been validated, so fetch the previous one corresponding to 'latestEntityId' - 1
+		// If 'latestEntityId' <= 1, return error
+		// Otherwise, do the same unmarshalling, marshalling, and return as in the 'then' block above
+	}
+
+	return nil
+}
+
+// TODO: Function: Read secret key from PDC
+func GetSecretKey(ctx contractapi.TransactionContextInterface) (*math.Zr, error) {
+	// Get my (i.e., my org's) collection name using func getCollectionName
+	// Read the serialized secret key from the collection (see func recordSecretInPrivateCollection for the write counterpart)
+	// Unmarshal the secret key byte array using func unmarshalDBESecret and return it
+	return nil, nil
+}
+
 func marshalDBEInitVal(initRequest *InitRequest) ([]byte, error) {
 	return json.Marshal(initRequest)
 }
@@ -500,5 +571,19 @@ func unmarshalDBESecret(secretBytes []byte) (*math.Zr, error) {
 		return nil, err
 	} else {
 		return secret, nil
+	}
+}
+
+func marshalDistPublicParameters(dpp *DistPublicParameters) ([]byte, error) {
+	return json.Marshal(dpp)
+}
+
+func unmarshalDistPublicParameters(dppBytes []byte) (*DistPublicParameters, error) {
+	dpp := &DistPublicParameters{}
+	err := json.Unmarshal(dppBytes, dpp)
+	if err != nil {
+		return nil, err
+	} else {
+		return dpp, nil
 	}
 }

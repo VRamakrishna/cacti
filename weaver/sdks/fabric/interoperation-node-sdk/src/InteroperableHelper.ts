@@ -24,6 +24,7 @@ import {
   serializeRemoteProposalResponse,
 } from "./decoders";
 import statePb from "@hyperledger/cacti-weaver-protos-js/common/state_pb";
+import cryptoPb from "@hyperledger/cacti-weaver-protos-js/common/crypto_pb";
 import fabricViewPb from "@hyperledger/cacti-weaver-protos-js/fabric/view_data_pb";
 import cordaViewPb from "@hyperledger/cacti-weaver-protos-js/corda/view_data_pb";
 import interopPayloadPb from "@hyperledger/cacti-weaver-protos-js/common/interop_payload_pb";
@@ -236,47 +237,53 @@ const getResponseDataFromView = (view, privKeyPEM = null) => {
         fabricViewChaincodeAction.getResponse().getPayload_asU8(),
       );
       if (interopPayload.getConfidential()) {
-        // Currently this is only supported for Fabric because it uses ECDSA keys in wallets
-        const confidentialPayload =
-          interopPayloadPb.ConfidentialPayload.deserializeBinary(
-            interopPayload.getPayload_asU8(),
+        if (interopPayload.getEncryptioninfo().getMechanism() == cryptoPb.EncryptionMechanism.ECIES) {
+          // Currently this is only supported for Fabric because it uses ECDSA keys in wallets
+          const confidentialPayload =
+            interopPayloadPb.ConfidentialPayload.deserializeBinary(
+              interopPayload.getPayload_asU8(),
+            );
+          const decryptedPayload = decryptData(
+            Buffer.from(confidentialPayload.getEncryptedPayload()),
+            privKeyPEM,
           );
-        const decryptedPayload = decryptData(
-          Buffer.from(confidentialPayload.getEncryptedPayload()),
-          privKeyPEM,
-        );
-        const decryptedPayloadContents =
-          interopPayloadPb.ConfidentialPayloadContents.deserializeBinary(
-            Uint8Array.from(Buffer.from(decryptedPayload)),
-          );
-        if (i === 0) {
-          viewAddress = interopPayload.getAddress();
-          responsePayload = Buffer.from(
-            decryptedPayloadContents.getPayload(),
-          ).toString();
-          payloadConfidential = true;
-        } else if (!payloadConfidential) {
-          throw new Error(
-            `Mismatching payload confidentiality flags across proposal responses`,
-          );
+          const decryptedPayloadContents =
+            interopPayloadPb.ConfidentialPayloadContents.deserializeBinary(
+              Uint8Array.from(Buffer.from(decryptedPayload)),
+            );
+          if (i === 0) {
+            viewAddress = interopPayload.getAddress();
+            responsePayload = Buffer.from(
+              decryptedPayloadContents.getPayload(),
+            ).toString();
+            payloadConfidential = true;
+          } else if (!payloadConfidential) {
+            throw new Error(
+              `Mismatching payload confidentiality flags across proposal responses`,
+            );
+          } else {
+            // Match view addresses in the different proposal responses
+            if (viewAddress !== interopPayload.getAddress()) {
+              throw new Error(
+                `Proposal response view addresses mismatch: 0 - ${viewAddress}, ${i} - ${interopPayload.getAddress()}`,
+              );
+            }
+            // Match decrypted view payloads from the different proposal responses
+            const currentResponsePayload = Buffer.from(
+              decryptedPayloadContents.getPayload(),
+            ).toString();
+            if (responsePayload !== currentResponsePayload) {
+              throw new Error(
+                `Decrypted proposal response payloads mismatch: 0 - ${responsePayload}, ${i} - ${currentResponsePayload}`,
+              );
+            }
+          }
+          responsePayloadContents.push(decryptedPayload.toString("base64"));
+        } else if (interopPayload.getEncryptioninfo().getMechanism() == cryptoPb.EncryptionMechanism.DBE) {
+          // TODO: Handle DBE interop payloads
         } else {
-          // Match view addresses in the different proposal responses
-          if (viewAddress !== interopPayload.getAddress()) {
-            throw new Error(
-              `Proposal response view addresses mismatch: 0 - ${viewAddress}, ${i} - ${interopPayload.getAddress()}`,
-            );
-          }
-          // Match decrypted view payloads from the different proposal responses
-          const currentResponsePayload = Buffer.from(
-            decryptedPayloadContents.getPayload(),
-          ).toString();
-          if (responsePayload !== currentResponsePayload) {
-            throw new Error(
-              `Decrypted proposal response payloads mismatch: 0 - ${responsePayload}, ${i} - ${currentResponsePayload}`,
-            );
-          }
+          throw new Error(`Unsupported encryption mechanism: ${interopPayload.getEncryptioninfo().getMechanism()}`);
         }
-        responsePayloadContents.push(decryptedPayload.toString("base64"));
       } else {
         if (i === 0) {
           viewAddress = interopPayload.getAddress();

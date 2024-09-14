@@ -215,7 +215,7 @@ func TestConfidentialInteropPayload(t *testing.T) {
 
 	// Generate confidential view with random data
 	viewContents := []byte("random-message")
-	confBytes, err := generateConfidentialInteropPayloadAndHash(viewContents, string(certBytes))
+	confBytes, err := generateConfidentialInteropPayloadAndHash_ECIES(viewContents, string(certBytes))
 	require.NoError(t, err)
 
 	// Parse result

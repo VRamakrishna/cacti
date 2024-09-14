@@ -15,6 +15,7 @@ import networksPb from "@hyperledger/cacti-weaver-protos-js/networks/networks_pb
 import common_ack_pb from "@hyperledger/cacti-weaver-protos-js/common/ack_pb";
 import eventsPb from "@hyperledger/cacti-weaver-protos-js/common/events_pb";
 import statePb from "@hyperledger/cacti-weaver-protos-js/common/state_pb";
+import cryptoPb from "@hyperledger/cacti-weaver-protos-js/common/crypto_pb";
 import * as helpers from "./helpers";
 /**
  * The Relay class represents a relay in the target blockchain network.
@@ -90,6 +91,8 @@ class Relay {
     nonce: string,
     org: string,
     confidential: boolean,
+    encryptionMechanism?: cryptoPb.EncryptionMechanism,
+    encryptionKeyBytesBase64?: string,
   ): Promise<string> {
     try {
       const networkClient = new networksGrpcPb.NetworkClient(
@@ -118,6 +121,18 @@ class Relay {
       query.setRequestingNetwork(requestingNetwork);
       query.setRequestingOrg(org || "");
       query.setConfidential(confidential || false);
+      if (confidential) {
+          const encInfo = new cryptoPb.EncryptionInfo();
+          if (!encryptionMechanism) {
+              encInfo.setMechanism(cryptoPb.EncryptionMechanism.ECIES);    // Default
+          } else {
+            encInfo.setMechanism(encryptionMechanism);
+          }
+          if (encryptionKeyBytesBase64) {
+            encInfo.setKey(new Uint8Array(Buffer.from(encryptionKeyBytesBase64, 'base64')));
+          }
+          query.setEncryptioninfo(encInfo);
+      }
       if (typeof requestState === "function") {
         const [resp, error] = await helpers.handlePromise(requestState(query));
         if (error) {
@@ -150,6 +165,8 @@ class Relay {
     nonce: string,
     org: string,
     confidential: boolean,
+    encryptionMechanism?: cryptoPb.EncryptionMechanism,
+    encryptionKeyBytesBase64?: string,
   ): Promise<any> {
     try {
       const [requestID, error] = await helpers.handlePromise(
@@ -162,6 +179,8 @@ class Relay {
           nonce,
           org,
           confidential,
+          encryptionMechanism,
+          encryptionKeyBytesBase64,
         ),
       );
       if (error) {

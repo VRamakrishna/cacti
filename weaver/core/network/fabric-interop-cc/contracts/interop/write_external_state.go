@@ -77,41 +77,47 @@ func ExtractAndValidateDataFromView(view *common.View, b64ViewContentList []stri
 	for i, interopPayload := range interopPayloadList {
 		// If view data is encrypted, match it to supplied decrypted data using the hash in the view payload
 		if interopPayload.Confidential {
-			// Unmarshal the (decrypted) confidential payload contents supplied by the caller
-			viewB64ContentBytes, err := base64.StdEncoding.DecodeString(b64ViewContentList[i])
-			if err != nil {
-				return nil, fmt.Errorf("Unable to base64 decode decrypted view content: %s", err.Error())
-			}
-			var confidentialPayloadContents common.ConfidentialPayloadContents
-			err = protoV2.Unmarshal(viewB64ContentBytes, &confidentialPayloadContents)
-			if err != nil {
-				return nil, fmt.Errorf("ConfidentialPayloadContents Unmarshal error: %s", err)
-			}
-			var confidentialPayload common.ConfidentialPayload
-			err = protoV2.Unmarshal(interopPayload.Payload, &confidentialPayload)
-			if err != nil {
-				return nil, fmt.Errorf("ConfidentialPayload Unmarshal error: %s", err)
-			}
-			if i == 0 {
-				if len(b64ViewContentList) != len(interopPayloadList) {
-					return nil, fmt.Errorf("Number of decrypted payloads (%d) does not match number of view contents (%d)", len(b64ViewContentList), len(interopPayloadList))
+			if interopPayload.EncryptionInfo.Mechanism == common.EncryptionMechanism_ECIES {
+				// Unmarshal the (decrypted) confidential payload contents supplied by the caller
+				viewB64ContentBytes, err := base64.StdEncoding.DecodeString(b64ViewContentList[i])
+				if err != nil {
+					return nil, fmt.Errorf("Unable to base64 decode decrypted view content: %s", err.Error())
 				}
-				payloadConfidential = true
-				viewPayload = confidentialPayloadContents.Payload
-			} else if !payloadConfidential {
-				return nil, fmt.Errorf("Mismatching confidentiality flags among interop payloads")
-			} else if !bytes.Equal(viewPayload, confidentialPayloadContents.Payload) {
-				return nil, fmt.Errorf("Mismatching payloads in proposal responses: 0 - %+v, %d - %+v", viewPayload, i, confidentialPayloadContents.Payload)
-			}
-			if confidentialPayload.HashType == common.ConfidentialPayload_HMAC {
-				payloadHMAC := hmac.New(sha256.New, confidentialPayloadContents.Random)
-				payloadHMAC.Write(confidentialPayloadContents.Payload)
-				payloadHMACBytes := payloadHMAC.Sum(nil)
-				if !bytes.Equal(confidentialPayload.Hash, payloadHMACBytes) {
-					return nil, fmt.Errorf("View payload hash does not match hash of data submitted by client")
+				var confidentialPayloadContents common.ConfidentialPayloadContents
+				err = protoV2.Unmarshal(viewB64ContentBytes, &confidentialPayloadContents)
+				if err != nil {
+					return nil, fmt.Errorf("ConfidentialPayloadContents Unmarshal error: %s", err)
 				}
+				var confidentialPayload common.ConfidentialPayload
+				err = protoV2.Unmarshal(interopPayload.Payload, &confidentialPayload)
+				if err != nil {
+					return nil, fmt.Errorf("ConfidentialPayload Unmarshal error: %s", err)
+				}
+				if i == 0 {
+					if len(b64ViewContentList) != len(interopPayloadList) {
+						return nil, fmt.Errorf("Number of decrypted payloads (%d) does not match number of view contents (%d)", len(b64ViewContentList), len(interopPayloadList))
+					}
+					payloadConfidential = true
+					viewPayload = confidentialPayloadContents.Payload
+				} else if !payloadConfidential {
+					return nil, fmt.Errorf("Mismatching confidentiality flags among interop payloads")
+				} else if !bytes.Equal(viewPayload, confidentialPayloadContents.Payload) {
+					return nil, fmt.Errorf("Mismatching payloads in proposal responses: 0 - %+v, %d - %+v", viewPayload, i, confidentialPayloadContents.Payload)
+				}
+				if confidentialPayload.HashType == common.ConfidentialPayload_HMAC {
+					payloadHMAC := hmac.New(sha256.New, confidentialPayloadContents.Random)
+					payloadHMAC.Write(confidentialPayloadContents.Payload)
+					payloadHMACBytes := payloadHMAC.Sum(nil)
+					if !bytes.Equal(confidentialPayload.Hash, payloadHMACBytes) {
+						return nil, fmt.Errorf("View payload hash does not match hash of data submitted by client")
+					}
+				} else {
+					return nil, fmt.Errorf("Unsupported hash type in interop view payload: %+v", confidentialPayload.HashType)
+				}
+			} else if interopPayload.EncryptionInfo.Mechanism == common.EncryptionMechanism_DBE {
+				// TODO: Call the DBE decryption method
 			} else {
-				return nil, fmt.Errorf("Unsupported hash type in interop view payload: %+v", confidentialPayload.HashType)
+				return nil, fmt.Errorf("Unknown or unsupported encryption mechanism in interop payload: %+v", interopPayload.EncryptionInfo.Mechanism)
 			}
 		} else {
 			if i == 0 {
@@ -254,11 +260,12 @@ func (s *SmartContract) VerifyView(ctx contractapi.TransactionContextInterface, 
 //
 // Verification requires the following steps:
 // 1. Create [CordaViewData] from the view.
-// 2. TODO: Verify address in payload is the same as original address
+// 2. Verify address in payload is the same as original address
 // 3. Verify each of the signatures in the Notarization array according to the data bytes and certificate.
 // 4. Check the certificates are valid according to the Membership.
 // 5. Check the notarizations fulfill the verification policy of the request.
 func verifyCordaNotarization(s *SmartContract, ctx contractapi.TransactionContextInterface, data []byte, verificationPolicy *common.Policy, securityDomain, address string) error {
+	// Create CordaViewData from the seralized view data
 	var cordaViewData corda.ViewData
 	err := protoV2.Unmarshal(data, &cordaViewData)
 	if err != nil {
@@ -267,7 +274,6 @@ func verifyCordaNotarization(s *SmartContract, ctx contractapi.TransactionContex
 
 	signerList := []string{}
 	var viewPayload []byte
-	// 3. Verify each of the signatures in the Notarization array according to the data bytes and certificate.
 	for i, value := range cordaViewData.NotarizedPayloads {
 		x509Cert, err := parseCert(value.Certificate)
 		if err != nil {
@@ -276,11 +282,16 @@ func verifyCordaNotarization(s *SmartContract, ctx contractapi.TransactionContex
 		if i == 0 {
 			viewPayload = value.Payload
 		}
+		// 2. Verify address in each proposal response payload is the same as original address
 		var interopPayload common.InteropPayload
 		err = protoV2.Unmarshal(value.Payload, &interopPayload)
 		if err != nil {
 			return fmt.Errorf("Unable to decode corda view data: %s", err.Error())
 		}
+		if address != interopPayload.Address {
+			return fmt.Errorf("Address in response does not match original address: Original: %s Response: %s", address, interopPayload.Address)
+		}
+		// 3. Verify each of the signatures in the Notarization array according to the data bytes and certificate.
 		decodedSignature, err := base64.StdEncoding.DecodeString(value.Signature)
 		if err != nil {
 			return fmt.Errorf("Corda signature could not be decoded from base64: %s", err.Error())

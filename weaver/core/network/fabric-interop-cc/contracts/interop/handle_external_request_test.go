@@ -62,6 +62,7 @@ func TestHandleExternalRequest(t *testing.T) {
 		Nonce:              "nonce",
 		RequestId:          "1234",
 		RequestingOrg:      "Org1MSP",
+		EncryptionInfo:     &common.EncryptionInfo{Mechanism: common.EncryptionMechanism_ECIES, Key: []byte("")},
 	}
 	now := time.Now()
 	threeDays := time.Hour * 24 * 3
@@ -243,7 +244,7 @@ func testHandleExternalRequestECDSAHappyCase(t *testing.T, query *common.Query, 
 		Payload:              []byte("17.12"),
 		Address:              "localhost:9080/network1/mychannel:interop:Read:a",
 		Confidential:         false,
-		RequestorCertificate: query.Certificate,
+		EncryptionInfo:       &common.EncryptionInfo{Mechanism: common.EncryptionMechanism_ECIES, Key: []byte("")},
 		Nonce:                query.Nonce,
 	}
 	interopPayloadBytes, err := protoV2.Marshal(&interopPayload)
@@ -279,7 +280,7 @@ func testHandleExternalRequestECDSAHappyCase(t *testing.T, query *common.Query, 
 	require.NoError(t, err)
 	require.NotEqual(t, interopPayload.Payload, interopPayloadResp.Payload)
 	require.True(t, interopPayloadResp.Confidential)
-	require.Equal(t, interopPayloadResp.RequestorCertificate, validCertificate)
+	require.Equal(t, string(interopPayloadResp.EncryptionInfo.Key), validCertificate)
 	require.Equal(t, interopPayloadResp.Nonce, query.Nonce)
 	var confPayload common.ConfidentialPayload
 	err = protoV2.Unmarshal(interopPayloadResp.Payload, &confPayload)
@@ -317,7 +318,7 @@ func testHandleEventRequestECDSAHappyCase(t *testing.T, query *common.Query, val
 		Payload:              []byte("17.12"),
 		Address:              "localhost:9080/network1/mychannel:interop:Read:a",
 		Confidential:         false,
-		RequestorCertificate: query.Certificate,
+		EncryptionInfo:       &common.EncryptionInfo{Mechanism: common.EncryptionMechanism_ECIES, Key: []byte("")},
 		Nonce:                query.Nonce,
 	}
 	interopPayloadBytes, err := protoV2.Marshal(&interopPayload)
@@ -382,7 +383,7 @@ func testHandleEventRequestECDSAHappyCase(t *testing.T, query *common.Query, val
 	require.NoError(t, err)
 	require.NotEqual(t, interopPayload.Payload, interopPayloadResp.Payload)
 	require.True(t, interopPayloadResp.Confidential)
-	require.Equal(t, interopPayloadResp.RequestorCertificate, validCertificate)
+	require.Equal(t, string(interopPayloadResp.EncryptionInfo.Key), validCertificate)
 	require.Equal(t, interopPayloadResp.Nonce, query.Nonce)
 	var confPayload common.ConfidentialPayload
 	err = protoV2.Unmarshal(interopPayloadResp.Payload, &confPayload)

@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
+	"errors"
+	"fmt"
+
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -44,6 +47,29 @@ type Ciphertext struct {
 	C0         *math.G2
 	C1         *math.G1
 	Encryption []byte
+}
+
+func GetPublicKeyAndParamsFromDistPublicParams(dpp *DistPublicParameters) (PublicKey, *PublicParameters, error) {
+	if dpp == nil || len(dpp.P) == 0 || len(dpp.H) == 0 || len(dpp.T) == 0 || dpp.N <= 0 || dpp.P[0] == nil || dpp.H[0] == nil || dpp.T[0] == nil || len(dpp.P) != 2 * dpp.N || len(dpp.H) != dpp.N + 1 || len(dpp.T) != dpp.N + 1 {
+		return nil, nil, errors.New(fmt.Sprintf("One or more attributes in DPP is missing or invalid"))
+	}
+
+	publicParams := &PublicParameters{}
+	publicParams.P = dpp.P[0]
+	publicParams.H = dpp.H[0]
+	publicParams.CurveID = dpp.CurveID
+	publicParams.N = dpp.N
+	for i := 0; i < dpp.N; i++ {
+		publicParams.FirstHalf[i] = dpp.P[i + 1]
+		publicParams.FirstHalfInG2[i] = dpp.H[i + 1]
+	}
+	for i := 0; i < dpp.N - 1; i++ {
+		publicParams.SecondHalf[i] = dpp.P[i + dpp.N + 1]
+	}
+
+	publicKey := dpp.T[0]
+
+	return publicKey, publicParams, nil
 }
 
 func (pp *PublicParameters) Gen(cid, N int, seed []byte) error {
@@ -97,6 +123,16 @@ func KeyGen(pp *PublicParameters) (DecryptionKeys, PublicKey, error) {
 		dk[i] = pp.FirstHalf[i].Mul(sk)
 	}
 	return dk, pk, nil
+}
+
+func DistKeyGen(dpp *DistPublicParameters, index int, secret *math.Zr) DecryptionKey {
+	DK := dpp.T[index]
+	// Multiple with 'secret' 'index' times
+	for i := 0 ; i < index ; i++ {
+		DK = DK.Mul(secret)
+	}
+
+	return DK
 }
 
 func Encrypt(plaintext []byte, target []int, pk PublicKey, pp *PublicParameters) ([]byte, error) {

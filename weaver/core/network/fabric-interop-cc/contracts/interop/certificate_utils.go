@@ -28,6 +28,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/cacti/weaver/common/protos-go/v2/common"
 	math "github.com/IBM/mathlib"
+	protoV2 "google.golang.org/protobuf/proto"
 )
 
 const (
@@ -316,7 +317,7 @@ func generateHMAC(data, key []byte) ([]byte, error) {
 }
 
 // This is the encryption function corresponding to the ECIES (plus HMAC) scheme
-func generateConfidentialInteropPayloadAndHash(message []byte, cert string) ([]byte, error) {
+func generateConfidentialInteropPayloadAndHash_ECIES(message []byte, cert string) ([]byte, error) {
 	// Generate a 16-byte random key for the HMAC
 	hashKey, err := generateSecureRandomKey(16)
 	if err != nil {
@@ -360,13 +361,40 @@ func generateConfidentialInteropPayloadAndHash(message []byte, cert string) ([]b
 }
 
 // This is the encryption function corresponding to the DBE scheme
-func generateDBEPayload(srsBytes, message []byte) ([]byte, error) {
-	// TODO
-	return nil, nil
+func generateDBEPayload(srsVersion uint32, srsBytes, message []byte) ([]byte, error) {
+	// TODO: allow a custom subset of org indices later; for now, just assume static [1, 2, .... , srsVersion]
+	targets := make([]int, srsVersion)
+	targetsForPassing := make([]int32, srsVersion)
+	for i := 1; i <= int(srsVersion); i++ {
+		targets[i] = i
+		targetsForPassing[i] = int32(i)
+	}
+
+	srsDpp, err := unmarshalDistPublicParameters(srsBytes)
+	if err != nil {
+		return nil, err
+	}
+	publicKey, publicParams, err := GetPublicKeyAndParamsFromDistPublicParams(srsDpp)
+	if err != nil {
+		return nil, err
+	}
+	ciphertext, err := Encrypt(message, targets, publicKey, publicParams)
+	if err != nil {
+		return nil, err
+	}
+	dbeCiphertext := &common.DBEConfidentialPayload{EncryptedPayload: ciphertext, Targets: targetsForPassing}
+	dbeCiphertextBytes, err := protoV2.Marshal(dbeCiphertext)
+	if err != nil {
+		return nil, err
+	}
+	return dbeCiphertextBytes, nil
 }
 
 // This is the decryption function corresponding to the DBE scheme
-func decryptDBEPayload(ciphertext, srsBytes []byte, secret *math.Zr) ([]byte, error) {
+func decryptDBEPayload(srsVersion int, ciphertext, srsBytes []byte, secret *math.Zr) ([]byte, error) {
 	// TODO
+	// Unmarshal ciphertext and get the ciphertext and targets array
+	// Get DecryptionKey
+	// Call Decrypt(...)
 	return nil, nil
 }

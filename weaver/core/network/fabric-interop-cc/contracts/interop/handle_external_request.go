@@ -176,9 +176,22 @@ func handleRequest(s *SmartContract, ctx contractapi.TransactionContextInterface
 		}
 		if query.Confidential || string(confFlag) == "true" {
 			confidential = true
-			// Generate encrypted payload and corroborating hash (HMAC)
-			// Use already authenticated certificate as the source of the public key for encryption
-			payload, err = generateConfidentialInteropPayloadAndHash(pbResp.Payload, query.Certificate)
+			if query.EncryptionInfo.Mechanism == common.EncryptionMechanism_ECIES {
+				// Generate encrypted payload and corroborating hash (HMAC)
+				// Use already authenticated certificate as the source of the public key for encryption
+				// TODO: Ignore 'query.EncryptionInfo.Key' for now, but add logic later to use it as public key source
+				payload, err = generateConfidentialInteropPayloadAndHash_ECIES(pbResp.Payload, query.Certificate)
+				query.EncryptionInfo.Key = []byte(query.Certificate)
+			} else if query.EncryptionInfo.Mechanism == common.EncryptionMechanism_DBE {
+				var dbeEncryptionSRS common.DBEKey
+				err = protoV2.Unmarshal(query.EncryptionInfo.Key, &dbeEncryptionSRS)
+				if err != nil {
+					return "", logThenErrorf("Unable to unmarshal query encryption key: %s", err.Error())
+				}
+				payload, err = generateDBEPayload(dbeEncryptionSRS.Version, dbeEncryptionSRS.Srs, pbResp.Payload)
+			} else {
+				return "", logThenErrorf("Unknown encryption mechanisms in remote query: %+v", query.EncryptionInfo.Mechanism)
+			}
 			if err != nil {
 				return "", logThenErrorf(err.Error())
 			}
@@ -191,7 +204,7 @@ func handleRequest(s *SmartContract, ctx contractapi.TransactionContextInterface
 		Address:              queryAddress,
 		Payload:              payload,
 		Confidential:         confidential,
-		RequestorCertificate: query.Certificate,
+		EncryptionInfo:       query.EncryptionInfo,
 		Nonce:                query.Nonce,
 	}
 	interopPayloadBytes, err := protoV2.Marshal(&interopPayloadStruct)

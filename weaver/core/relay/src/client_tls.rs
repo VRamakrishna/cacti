@@ -4,7 +4,7 @@
 
 mod relay_proto;
 use weaverpb::common::ack::ack;
-use weaverpb::common::query::{EncryptionInfo, EncryptionMechanism};
+use weaverpb::common::crypto::{EncryptionInfo, EncryptionMechanism};
 use weaverpb::common::state::{request_state, view_payload, ViewPayload, View, Meta, meta};
 use weaverpb::common::events::{event_subscription_state, EventMatcher, EventPublication, event_publication, ContractTransaction};
 use weaverpb::relay::events::{event_publish_client::EventPublishClient};
