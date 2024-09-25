@@ -15,6 +15,7 @@ import {
   InvocationSpec,
 } from "./fabric-functions";
 import { AssetPledge } from "@hyperledger/cacti-weaver-protos-js/common/asset_transfer_pb";
+import { ConfidentialPayloadContents } from "@hyperledger/cacti-weaver-protos-js/common/interop_payload_pb";
 import { InteroperableHelper } from "@hyperledger/cacti-weaver-sdk-fabric";
 import * as crypto from "crypto";
 import { promisify } from "util";
@@ -1008,8 +1009,15 @@ const interopHelper = async (
           );
     if (remoteValue.contents) {
       logger.debug(
-        `ViewB64Contents: ${Buffer.from(remoteValue.contents).toString("base64")}`,
+        `ViewB64Contents: ${remoteValue.contents[0]}`,
       );
+      logger.debug(JSON.stringify(ConfidentialPayloadContents.deserializeBinary(Buffer.from(remoteValue.contents[0], "base64")).toObject()))
+      if (remoteValue.contents.length==2) {
+        logger.debug(
+          `ViewB64Contents: ${remoteValue.contents[1]}`,
+        );
+        logger.debug(JSON.stringify(ConfidentialPayloadContents.deserializeBinary(Buffer.from(remoteValue.contents[1], "base64")).toObject()))
+      }
     }
     spinner.succeed(
       `Called Function ${applicationFunction}. With Args: ${invokeObject.ccArgs} ${remoteValue.data}`,
