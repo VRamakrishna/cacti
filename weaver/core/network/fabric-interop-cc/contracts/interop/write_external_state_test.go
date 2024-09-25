@@ -224,7 +224,7 @@ func TestWriteExternalState(t *testing.T) {
 		Message: "",
 		Payload: []byte("I am a result"),
 	})
-	err = interopcc.WriteExternalState(ctx, fabricNetwork, "mychannel", "Write", []string{"test-key", ""}, []int{1}, []string{"localhost:9081/Corda_Network/localhost:10006#com.cordaSimpleApplication.flow.GetStateByKey:H"}, []string{cordaTestData.B64View}, decContentsList)
+	err = interopcc.WriteExternalState(ctx, fabricNetwork, "mychannel", "Write", []string{"test-key", ""}, []int{1}, []string{"localhost:9080/Corda_Network/localhost:10006#com.cordaSimpleApplication.flow.GetStateByKey:H"}, []string{cordaTestData.B64View}, decContentsList)
 	require.NoError(t, err)
 
 	// Test case: Invalid cert in Membership
