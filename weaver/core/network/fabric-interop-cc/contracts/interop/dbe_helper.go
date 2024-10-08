@@ -8,14 +8,17 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
+	"github.com/hyperledger/cacti/weaver/common/protos-go/v2/common"
 	log "github.com/sirupsen/logrus"
 	math "github.com/IBM/mathlib"
+	protoV2 "google.golang.org/protobuf/proto"
 )
 
 const dbeObjectKey = "dbecrypto"
@@ -320,7 +323,7 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 		return fmt.Errorf("Error recording the UpdateRequest latest entity Id %d on ledger: %+v", entityId, err)
 	}
 
-	// Record the Org MSPID of the peer creating this UpdateRequest
+	// Record the Org MSPID and version number of the peer creating this UpdateRequest
 	err = ctx.GetStub().PutState(updateRequestOrgPresenceKey, []byte(entityIdStr))
 	if err != nil {
 		return err
@@ -461,75 +464,117 @@ func (s *SmartContract) ValidateDbeUpdateVal(ctx contractapi.TransactionContextI
 	return ctx.GetStub().PutState(updateRequestStatusKey, []byte(dbeSRSValidated))
 }
 
-// TODO: Chaincode function: Read DistPublicParameters and version from latest UpdateRequest
-func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionContextInterface) error {
+// Return as a base64-encoded string
+func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionContextInterface) (string, error) {
 	// Read the latest entityId on ledger
 	updateRequestLatestEntityIdKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSLatestEntityIdKey})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest latest entity Id: %+v", err)
+		return "", fmt.Errorf("Error creating composite key for UpdateRequest latest entity Id: %+v", err)
 	}
 	latestEntityIdBytes, err := ctx.GetStub().GetState(updateRequestLatestEntityIdKey)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if latestEntityIdBytes == nil || len(latestEntityIdBytes) == 0 {
-		return fmt.Errorf("Invalid transaction. No UpdateRequest recorded yet.")
+		return "", fmt.Errorf("Invalid transaction. No UpdateRequest recorded yet.")
 	}
 	latestEntityIdStr := string(latestEntityIdBytes)
 	latestEntityId, err := strconv.Atoi(latestEntityIdStr)
 	if err != nil {
-		return err
+		return "", err
 	}
 	log.Printf("Latest entity Id retrieved from ledger = %d.", latestEntityId)
 
 	// Lookup UpdateRequest corresponding to 'latestEntityId'
 	updateRequestKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, latestEntityIdStr})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest for latest entity Id %d: %+v", latestEntityId, err)
+		return "", fmt.Errorf("Error creating composite key for UpdateRequest for latest entity Id %d: %+v", latestEntityId, err)
 	}
 	updateRequestBytes, err := ctx.GetStub().GetState(updateRequestKey)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if updateRequestBytes == nil || len(updateRequestBytes) != 0 {
-		return fmt.Errorf("Invalid ledger state. UpdateRequest not recorded for latest entity Id %d.", latestEntityId)
+		return "", fmt.Errorf("Invalid ledger state. UpdateRequest not recorded for latest entity Id %d.", latestEntityId)
 	}
 
 	// Lookup the status.
 	updateRequestStatusKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSStatusKey, latestEntityIdStr})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest status for entity Id %d: %+v", latestEntityId, err)
+		return "", fmt.Errorf("Error creating composite key for UpdateRequest status for entity Id %d: %+v", latestEntityId, err)
 	}
 	updateRequestStatusBytes, err := ctx.GetStub().GetState(updateRequestStatusKey)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if updateRequestStatusBytes == nil || len(updateRequestStatusBytes) == 0 {
-		return fmt.Errorf("Empty UpdateRequest status recorded on the ledger for entity Id %d.", latestEntityId)
+		return "", fmt.Errorf("Empty UpdateRequest status recorded on the ledger for entity Id %d.", latestEntityId)
 	}
+
+	var dbeUpdateInfo *common.DBEKey
 	// If status is 'VALIDATED`, return the parameters for the update request fetched above.
 	if string(updateRequestStatusBytes) == dbeSRSValidated {
-		// TODO
-		// Unmarshal 'updateRequestBytes' using func unmarshalDBEUpdateVal to 'updateRequest'
+		// Unmarshal 'updateRequestBytes' to 'updateRequest'
+		updateRequest, err := unmarshalDBEUpdateVal(updateRequestBytes)
+		if err != nil {
+			return "", err
+		}
 		// Marshal updateRequest.NewDistPublicParameters to a byte array
-		// Return a serialized form of a structure containing the above plus 'latestEntityId'
-		// (Both the above are needed for the client to create an 'EncryptionInfo' in the NetworkQuery to the relay)
+		updateRequestParamsBytes, err := marshalDistPublicParameters(updateRequest.NewDistPublicParameters)
+		if err != nil {
+			return "", err
+		}
+		// Use DBEKey structure to encapsulate the above parameters plus 'latestEntityId'
+		dbeUpdateInfo = &common.DBEKey{Srs: updateRequestParamsBytes, Version: uint32(latestEntityId)}
 	} else {
-		// TODO
 		// The latest update request has not been validated, so fetch the previous one corresponding to 'latestEntityId' - 1
-		// If 'latestEntityId' <= 1, return error
-		// Otherwise, do the same unmarshalling, marshalling, and return as in the 'then' block above
-	}
+		log.Printf("Fetching previous entity Id %d from ledger as the latest one is not validated yet.", latestEntityId - 1)
 
-	return nil
+		// If 'latestEntityId' <= 1, return error
+		if latestEntityId <= 1 {
+			return "", fmt.Errorf("No UpdateRequest validated on ledger yet")
+		}
+		lastUpdateRequestParams, err := GetLastRequestDBEParams(ctx, latestEntityId)
+		if err != nil {
+			return "", err
+		}
+		// Marshal updateRequest.NewDistPublicParameters to a byte array
+		lastUpdateRequestParamsBytes, err := marshalDistPublicParameters(lastUpdateRequestParams)
+		if err != nil {
+			return "", err
+		}
+		// Use DBEKey structure to encapsulate the above parameters plus 'latestEntityId'
+		dbeUpdateInfo = &common.DBEKey{Srs: lastUpdateRequestParamsBytes, Version: uint32(latestEntityId -1)}
+	}
+	dbeUpdateInfoBytes, err := protoV2.Marshal(dbeUpdateInfo)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(dbeUpdateInfoBytes), nil
 }
 
-// TODO: Function: Read secret key from PDC
+// Function: Read secret key from PDC
 func GetSecretKey(ctx contractapi.TransactionContextInterface) (*math.Zr, error) {
-	// Get my (i.e., my org's) collection name using func getCollectionName
+	// Get collection name for my organization.
+	orgCollection, err := getCollectionName(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to infer private collection name for the org: %v", err)
+	}
+
 	// Read the serialized secret key from the collection (see func recordSecretInPrivateCollection for the write counterpart)
+	secretKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeSecretKey})
+	secretBytes, err := ctx.GetStub().GetPrivateData(orgCollection, secretKey)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to fetch secret for key %s from collection %s: %v", secretKey, orgCollection, err)
+	}
+	log.Printf("Get: collection %s, key %s, value %s", orgCollection, secretKey, string(secretBytes))
+
 	// Unmarshal the secret key byte array using func unmarshalDBESecret and return it
-	return nil, nil
+	secret, err := unmarshalDBESecret(secretBytes)
+	if err != nil {
+		return nil, err
+	}
+	return secret, nil
 }
 
 func marshalDBEInitVal(initRequest *InitRequest) ([]byte, error) {

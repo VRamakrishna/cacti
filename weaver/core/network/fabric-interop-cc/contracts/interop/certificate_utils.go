@@ -391,10 +391,28 @@ func generateDBEPayload(srsVersion uint32, srsBytes, message []byte) ([]byte, er
 }
 
 // This is the decryption function corresponding to the DBE scheme
-func decryptDBEPayload(srsVersion int, ciphertext, srsBytes []byte, secret *math.Zr) ([]byte, error) {
-	// TODO
+func decryptDBEPayload(srsVersion, decrypterIndex int, ciphertext, srsBytes []byte, secret *math.Zr) ([]byte, error) {
 	// Unmarshal ciphertext and get the ciphertext and targets array
+	var dbeCiphertext common.DBEConfidentialPayload
+	err := protoV2.Unmarshal(ciphertext, &dbeCiphertext)
+	if err != nil {
+		return nil, err
+    }
 	// Get DecryptionKey
+	dpp, err := unmarshalDistPublicParameters(srsBytes)
+	if err != nil {
+		return nil, err
+	}
+	decryptionKey := DistKeyGen(dpp, decrypterIndex, secret)
 	// Call Decrypt(...)
-	return nil, nil
+	_, publicParams, err := GetPublicKeyAndParamsFromDistPublicParams(dpp)
+	if err != nil {
+		return nil, err
+	}
+	targetsForPassing := make([]int, len(dbeCiphertext.Targets))
+	for i := 0; i < len(dbeCiphertext.Targets); i++ {
+		targetsForPassing[i] = int(dbeCiphertext.Targets[i])
+	}
+	plaintext, err := Decrypt(dbeCiphertext.EncryptedPayload, decryptionKey, targetsForPassing, decrypterIndex, publicParams)
+	return plaintext, nil
 }
