@@ -59,6 +59,9 @@ func GetPublicKeyAndParamsFromDistPublicParams(dpp *DistPublicParameters) (Publi
 	publicParams.H = dpp.H[0]
 	publicParams.CurveID = dpp.CurveID
 	publicParams.N = dpp.N
+	publicParams.FirstHalf = make([]*math.G1, dpp.N)
+	publicParams.FirstHalfInG2 = make([]*math.G2, dpp.N)
+	publicParams.SecondHalf = make([]*math.G1, dpp.N - 1)
 	for i := 0; i < dpp.N; i++ {
 		publicParams.FirstHalf[i] = dpp.P[i + 1]
 		publicParams.FirstHalfInG2[i] = dpp.H[i + 1]

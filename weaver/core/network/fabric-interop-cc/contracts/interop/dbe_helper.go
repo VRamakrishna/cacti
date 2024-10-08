@@ -464,7 +464,8 @@ func (s *SmartContract) ValidateDbeUpdateVal(ctx contractapi.TransactionContextI
 	return ctx.GetStub().PutState(updateRequestStatusKey, []byte(dbeSRSValidated))
 }
 
-// Return as a base64-encoded string
+// Get latest SRS public parameters and latest version ID
+// Return as a base64-encoded string from an unmarshalled DBEKey structure
 func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionContextInterface) (string, error) {
 	// Read the latest entityId on ledger
 	updateRequestLatestEntityIdKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSLatestEntityIdKey})
@@ -551,6 +552,29 @@ func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionCont
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(dbeUpdateInfoBytes), nil
+}
+
+// Read my org's version number as set in this protocol (i.e., in what position in the sequence did I submit an UpdateRequest)
+func GetDbeUpdateLocalVersion(ctx contractapi.TransactionContextInterface) (int, error) {
+	// Get my org MSP ID
+	orgMSPID, err := shim.GetMSPID()
+	if err != nil {
+		return 0, fmt.Errorf("Failed to get peer's Org MSPID: %+v", err)
+	}
+	// Lookup the version number corresponding to my org's position in the update sequence
+	updateRequestOrgPresenceKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, orgMSPID})
+	if err != nil {
+		return 0, fmt.Errorf("Error creating composite key for UpdateRequest for org MSP ID %s presence: %+v", orgMSPID, err)
+	}
+	updateRequestOrgPresenceBytes, err := ctx.GetStub().GetState(updateRequestOrgPresenceKey)
+	if err != nil {
+		return 0, err
+	}
+	entityId, err := strconv.Atoi(string(updateRequestOrgPresenceBytes))
+	if err != nil {
+		return 0, err
+	}
+	return entityId, nil
 }
 
 // Function: Read secret key from PDC

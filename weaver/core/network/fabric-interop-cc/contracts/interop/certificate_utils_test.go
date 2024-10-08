@@ -29,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/cacti/weaver/common/protos-go/v2/common"
+	math "github.com/IBM/mathlib"
 )
 
 func TestVerifyCertificateChain(t *testing.T) {
@@ -243,6 +244,56 @@ func TestConfidentialInteropPayload(t *testing.T) {
 	mac.Write(confPayloadContents.Payload)
 	fmac := mac.Sum(nil)
 	require.Equal(t, confPayload.Hash, fmac)
+}
+
+func TestDBEConfidentialInteropPayload(t *testing.T) {
+	// Initialize a 'dbeParams' object
+	numOrgs := 5
+	seed := "some-seed"
+	dbeParams := &DistPublicParameters{}
+	// Call 'Init'
+	initRequest, err := dbeParams.Init(0, numOrgs, []byte(seed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Call 'Update' for every participant
+	dbeParams = initRequest.InitDistPublicParameters
+	secrets := make([]*math.Zr, numOrgs)
+	for i := 0; i < numOrgs; i++ {
+		// Generate a secret for the participant
+		curve := math.Curves[dbeParams.CurveID]
+		rand, err := curve.Rand()
+		if err != nil {
+			t.Fatal(err)
+		}
+		secrets[i] = curve.NewRandomZr(rand)
+		updateRequest, err := dbeParams.Update(i + 1, secrets[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		dbeParams = updateRequest.NewDistPublicParameters
+	}
+
+	// Encrypt a message
+	message := []byte("some-message")
+	dbeParamsBytes, err := marshalDistPublicParameters(dbeParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encryptedMessage, err := generateDBEPayload(uint32(numOrgs), dbeParamsBytes, message)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("DBE-Encrypted Message: %s\n", string(encryptedMessage))
+
+	// Decrypt the encrypted message by each party in turn
+	for i := 0; i < numOrgs; i++ {
+		decryptedMessage, err := decryptDBEPayload(numOrgs, i + 1, encryptedMessage, dbeParamsBytes, secrets[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Printf("DBE-Decrypted Message by party %d: %s\n", i, string(decryptedMessage))
+	}
 }
 
 func generateCertFromTemplate(template x509.Certificate, keyType string) ([]byte, error) {

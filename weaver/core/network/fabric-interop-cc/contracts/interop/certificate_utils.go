@@ -366,8 +366,8 @@ func generateDBEPayload(srsVersion uint32, srsBytes, message []byte) ([]byte, er
 	targets := make([]int, srsVersion)
 	targetsForPassing := make([]int32, srsVersion)
 	for i := 1; i <= int(srsVersion); i++ {
-		targets[i] = i
-		targetsForPassing[i] = int32(i)
+		targets[i - 1] = i
+		targetsForPassing[i - 1] = int32(i)
 	}
 
 	srsDpp, err := unmarshalDistPublicParameters(srsBytes)

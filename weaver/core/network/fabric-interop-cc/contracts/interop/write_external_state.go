@@ -31,7 +31,7 @@ type interop interface {
 
 // Extract data (i.e., query response) from view
 // TODO - Also take verification policy as parameter and determine if enough matching responses exist (current logic mandates unanimity among payloads)
-func ExtractAndValidateDataFromView(view *common.View, b64ViewContentList []string) ([]byte, error) {
+func ExtractAndValidateDataFromView(s *SmartContract, ctx contractapi.TransactionContextInterface, view *common.View, b64ViewContentList []string) ([]byte, error) {
 	var interopPayloadList []*common.InteropPayload
 	if view.Meta.Protocol == common.Meta_FABRIC {
 		var fabricViewData fabric.FabricView
@@ -115,7 +115,46 @@ func ExtractAndValidateDataFromView(view *common.View, b64ViewContentList []stri
 					return nil, fmt.Errorf("Unsupported hash type in interop view payload: %+v", confidentialPayload.HashType)
 				}
 			} else if interopPayload.EncryptionInfo.Mechanism == common.EncryptionMechanism_DBE {
-				// TODO: Call the DBE decryption method
+				// Unmarshal the DBE payload contents supplied by the caller
+				var dbeConfidentialPayload common.DBEConfidentialPayload
+				err := protoV2.Unmarshal(interopPayload.Payload, &dbeConfidentialPayload)
+				if err != nil {
+					return nil, fmt.Errorf("DBEConfidentialPayload Unmarshal error: %s", err)
+				}
+				// Decrypt the DBE-encrypted payload
+				secret, err := GetSecretKey(ctx)
+				if err != nil {
+					return nil, fmt.Errorf("Error retrieving DBE secret from PDC: %s", err)
+				}
+				dbeParamsAndVersionBytes64, err := s.GetDbeUpdatePublicParams(ctx)
+				if err != nil {
+					return nil, err
+				}
+				dbeParamsAndVersionBytes, err := base64.StdEncoding.DecodeString(dbeParamsAndVersionBytes64)
+				if err != nil {
+					return nil, fmt.Errorf("Unable to base64 decode latest DBE SRS on ledger: %s", err.Error())
+				}
+				var dbeParamsAndVersion common.DBEKey
+				err = protoV2.Unmarshal(dbeParamsAndVersionBytes, &dbeParamsAndVersion)
+				if err != nil {
+					return nil, fmt.Errorf("DBEKey Unmarshal error: %s", err)
+				}
+				dbeParamsUpdateLocalVersion, err := GetDbeUpdateLocalVersion(ctx)
+				if err != nil {
+					return nil, err
+				}
+				decryptedPayload, err := decryptDBEPayload(int(dbeParamsAndVersion.Version), dbeParamsUpdateLocalVersion, interopPayload.Payload, dbeParamsAndVersion.Srs, secret)
+				if err != nil {
+					return nil, fmt.Errorf("Error decrypting DBE-encrypted payload: %s", err)
+				}
+				if i == 0 {
+					payloadConfidential = true
+					viewPayload = decryptedPayload
+				} else if !payloadConfidential {
+					return nil, fmt.Errorf("Mismatching confidentiality flags among interop payloads")
+				} else if !bytes.Equal(viewPayload, decryptedPayload) {
+					return nil, fmt.Errorf("Mismatching payloads in proposal responses: 0 - %+v, %d - %+v", viewPayload, i, decryptedPayload)
+				}
 			} else {
 				return nil, fmt.Errorf("Unknown or unsupported encryption mechanism in interop payload: %+v", interopPayload.EncryptionInfo.Mechanism)
 			}
@@ -153,7 +192,7 @@ func (s *SmartContract) ParseAndValidateView(ctx contractapi.TransactionContextI
 	}
 
 	// 2. Extract response data for consumption by application chaincode
-	viewData, err := ExtractAndValidateDataFromView(&view, b64ViewContentList)
+	viewData, err := ExtractAndValidateDataFromView(s, ctx, &view, b64ViewContentList)
 	if err != nil {
 		return "", err
 	}
