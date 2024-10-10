@@ -27,7 +27,7 @@ func decodeMembershipSerialized64(bytes64 string) (*common.Membership, error) {
 	protoBytes, err := base64.StdEncoding.DecodeString(bytes64)
 	err = protoV2.Unmarshal(protoBytes, &decodeObj)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to unmarshal membership serialized proto")
+		return nil, logThenErrorf("Unable to unmarshal membership serialized proto")
 	}
 	return &decodeObj, nil
 }
@@ -47,11 +47,11 @@ func decodeCounterAttestedMembership(protoBytesBase64 string) (*identity.Counter
 	var decodeObj identity.CounterAttestedMembership
 	protoBytes, err := base64.StdEncoding.DecodeString(protoBytesBase64)
 	if err != nil {
-		return nil, fmt.Errorf("Counter attested membership could not be decoded from base64: %s", err.Error())
+		return nil, logThenErrorf("Counter attested membership could not be decoded from base64: %s", err.Error())
 	}
 	err = protoV2.Unmarshal(protoBytes, &decodeObj)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to unmarshal counter attested membership serialized proto")
+		return nil, logThenErrorf("Unable to unmarshal counter attested membership serialized proto")
 	}
 	return &decodeObj, nil
 }

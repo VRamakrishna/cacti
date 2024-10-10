@@ -86,7 +86,7 @@ func verifyCaCertificate(cert *x509.Certificate, memberCertificate string) error
 	}
 	err = validateCertificateUsingCA(cert, memberX509Cert, true)
 	if err != nil {
-		return fmt.Errorf("CA Certificate is not valid: %s", err.Error())
+		return logThenErrorf("CA Certificate is not valid: %s", err.Error())
 	}
 	return nil
 }
@@ -144,7 +144,7 @@ func validateCertificateUsingCA(cert *x509.Certificate, signerCACert *x509.Certi
 	certIssuer := cert.Issuer.String()
 	signerSubject := signerCACert.Subject.String()
 	if certIssuer != signerSubject {
-		return fmt.Errorf("Certificate issuer %s does not match signer subject %s", certIssuer, signerSubject)
+		return logThenErrorf("Certificate issuer %s does not match signer subject %s", certIssuer, signerSubject)
 	}
 	return nil
 }
@@ -189,7 +189,7 @@ func getHashSHA2(bitsize int) (hash.Hash, error) {
 	case 521:
 		return sha512.New(), nil
 	default:
-		return nil, fmt.Errorf("invalid bitsize. It was [%d]. Expected [224, 256, 384, 512, 521]", bitsize)
+		return nil, logThenErrorf("invalid bitsize. It was [%d]. Expected [224, 256, 384, 512, 521]", bitsize)
 	}
 }
 

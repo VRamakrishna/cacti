@@ -14,20 +14,12 @@ import (
 
 	"github.com/hyperledger/cacti/weaver/core/network/fabric-interop-cc/libs/assetexchange/v2"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
-	log "github.com/sirupsen/logrus"
 	wutils "github.com/hyperledger/cacti/weaver/core/network/fabric-interop-cc/libs/utils/v2"
 )
 
 const (
 	callerCCIdPrefix  = "CallerCCId_" // prefix for the caller CC ID map, contractId --> caller-cc-id
 )
-
-// helper functions to log and return errors
-func logThenErrorf(format string, args ...interface{}) error {
-	errorMsg := fmt.Sprintf(format, args...)
-	log.Error(errorMsg)
-	return errors.New(errorMsg)
-}
 
 // function to return the key to fetch a calling chaincode ID from the map using contractId
 func generateContractIdMapCCKey(contractId string) string {

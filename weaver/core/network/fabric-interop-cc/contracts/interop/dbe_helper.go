@@ -39,7 +39,7 @@ func getCollectionName(ctx contractapi.TransactionContextInterface) (string, err
 	// Get the MSP ID of the org to which this peer belongs
 	peerMSPID, err := shim.GetMSPID()
 	if err != nil {
-		return "", fmt.Errorf("failed to get verified MSPID: %v", err)
+		return "", logThenErrorf("failed to get verified MSPID: %v", err)
 	}
 
 	// Create the collection name
@@ -53,14 +53,14 @@ func recordSecretInPrivateCollection(ctx contractapi.TransactionContextInterface
 	// Get collection name for this organization.
 	orgCollection, err := getCollectionName(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to infer private collection name for the org: %v", err)
+		return logThenErrorf("Failed to infer private collection name for the org: %v", err)
 	}
 
 	secretKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeSecretKey})
 	log.Printf("Put: collection %s, key %s, value %s", orgCollection, secretKey, string(secretBytes))
 	err = ctx.GetStub().PutPrivateData(orgCollection, secretKey, secretBytes)
 	if err != nil {
-		return fmt.Errorf("Failed to store secret for key %s in collection %s: %v", secretKey, orgCollection, err)
+		return logThenErrorf("Failed to store secret for key %s in collection %s: %v", secretKey, orgCollection, err)
 	}
 	return nil
 }
@@ -69,52 +69,52 @@ func (s *SmartContract) GenerateDbeInitVal(ctx contractapi.TransactionContextInt
 	// Check if an InitRequest is already recorded. If so, return.
 	initRequestKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeInitSRSKey})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for InitRequest: %+v", err)
+		return logThenErrorf("Error creating composite key for InitRequest: %+v", err)
 	}
 	initRequestBytes, err := ctx.GetStub().GetState(initRequestKey)
 	if err != nil {
 		return err
 	}
 	if initRequestBytes != nil && len(initRequestBytes) != 0 {
-		return fmt.Errorf("Invalid transaction. InitRequest already recorded.")
+		return logThenErrorf("Invalid transaction. InitRequest already recorded.")
 	}
 
 	// Record the serialized InitRequest
 	dbeParams := &DistPublicParameters{}
 	initRequest, err := dbeParams.Init(0, numOrgs, []byte(seed))
 	if err != nil {
-		return fmt.Errorf("Error computing initial SRS value: %+v", err)
+		return logThenErrorf("Error computing initial SRS value: %+v", err)
 	}
 
 	// Serialize the InitRequest for recording
 	initRequestBytes, err = marshalDBEInitVal(initRequest)
 	if err != nil {
-		return fmt.Errorf("Error marshalling the InitRequest object: %+v", err)
+		return logThenErrorf("Error marshalling the InitRequest object: %+v", err)
 	}
 
 	err = ctx.GetStub().PutState(initRequestKey, initRequestBytes)
 	if err != nil {
-		return fmt.Errorf("Error recording the InitRequest object on ledger: %+v", err)
+		return logThenErrorf("Error recording the InitRequest object on ledger: %+v", err)
 	}
 
 	// Record the Org MSPID of the peer creating this InitRequest
 	initRequestOrgKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeInitSRSOrgKey})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for InitRequest Org: %+v", err)
+		return logThenErrorf("Error creating composite key for InitRequest Org: %+v", err)
 	}
 	orgMSPID, err := shim.GetMSPID()
 	if err != nil {
-		return fmt.Errorf("Failed to get peer's Org MSPID: %+v", err)
+		return logThenErrorf("Failed to get peer's Org MSPID: %+v", err)
 	}
 	err = ctx.GetStub().PutState(initRequestOrgKey, []byte(orgMSPID))
 	if err != nil {
-		return fmt.Errorf("Error recording the InitRequest Org: %+v", err)
+		return logThenErrorf("Error recording the InitRequest Org: %+v", err)
 	}
 
 	// Record the status of the InitRequest
 	initRequestStatusKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeInitSRSStatusKey})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for InitRequest status: %+v", err)
+		return logThenErrorf("Error creating composite key for InitRequest status: %+v", err)
 	}
 	return ctx.GetStub().PutState(initRequestStatusKey, []byte(dbeSRSProposed))
 }
@@ -123,30 +123,30 @@ func (s *SmartContract) ValidateDbeInitVal(ctx contractapi.TransactionContextInt
 	// Lookup the InitRequest recorded. If nothing recorded, return failure.
 	initRequestKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeInitSRSKey})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for InitRequest: %+v", err)
+		return logThenErrorf("Error creating composite key for InitRequest: %+v", err)
 	}
 	initRequestBytes, err := ctx.GetStub().GetState(initRequestKey)
 	if err != nil {
 		return err
 	}
 	if initRequestBytes == nil || len(initRequestBytes) == 0 {
-		return fmt.Errorf("Invalid transaction. InitRequest not recorded yet.")
+		return logThenErrorf("Invalid transaction. InitRequest not recorded yet.")
 	}
 
 	// Lookup the status. If it is 'VALIDATED`, return failure.
 	initRequestStatusKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeInitSRSStatusKey})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for InitRequest status: %+v", err)
+		return logThenErrorf("Error creating composite key for InitRequest status: %+v", err)
 	}
 	initRequestStatusBytes, err := ctx.GetStub().GetState(initRequestStatusKey)
 	if err != nil {
 		return err
 	}
 	if initRequestStatusBytes == nil || len(initRequestStatusBytes) == 0 {
-		return fmt.Errorf("Empty InitRequest status recorded on the ledger.")
+		return logThenErrorf("Empty InitRequest status recorded on the ledger.")
 	}
 	if string(initRequestStatusBytes) == dbeSRSValidated {
-		return fmt.Errorf("InitRequest already validated.")
+		return logThenErrorf("InitRequest already validated.")
 	}
 
 	// Unmarshal the InitRequest
@@ -162,25 +162,25 @@ func (s *SmartContract) ValidateDbeInitVal(ctx contractapi.TransactionContextInt
 		if err != nil {
 			retErr = err
 		} else {
-			retErr = fmt.Errorf("Init value verification failed.")
+			retErr = logThenErrorf("Init value verification failed.")
 		}
 
 		// Cleanup: delete some of the key value pairs if the validation fails (i.e., the init request recorded was invalid)
 		err = ctx.GetStub().DelState(initRequestKey)
 		if err != nil {
-			return fmt.Errorf("Error deleting key %s: %+v. InitRequest verification error: %+v", initRequestKey, err, retErr)
+			return logThenErrorf("Error deleting key %s: %+v. InitRequest verification error: %+v", initRequestKey, err, retErr)
 		}
 		initRequestOrgKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeInitSRSOrgKey})
 		if err != nil {
-			return fmt.Errorf("Error creating composite key for InitRequest Org: %+v. InitRequest verification error: %+v", err, retErr)
+			return logThenErrorf("Error creating composite key for InitRequest Org: %+v. InitRequest verification error: %+v", err, retErr)
 		}
 		err = ctx.GetStub().DelState(initRequestOrgKey)
 		if err != nil {
-			return fmt.Errorf("Error deleting key %s: %+v. InitRequest verification error: %+v", initRequestOrgKey, err, retErr)
+			return logThenErrorf("Error deleting key %s: %+v. InitRequest verification error: %+v", initRequestOrgKey, err, retErr)
 		}
 		err = ctx.GetStub().DelState(initRequestStatusKey)
 		if err != nil {
-			return fmt.Errorf("Error deleting key %s: %+v. InitRequest verification error: %+v", initRequestStatusKey, err, retErr)
+			return logThenErrorf("Error deleting key %s: %+v. InitRequest verification error: %+v", initRequestStatusKey, err, retErr)
 		}
 
 		return retErr
@@ -195,14 +195,14 @@ func GetLastRequestDBEParams(ctx contractapi.TransactionContextInterface, entity
 	if entityId == 1 {	// Lookup recorded InitRequest
 		initRequestKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeInitSRSKey})
 		if err != nil {
-			return nil, fmt.Errorf("Error creating composite key for InitRequest: %+v", err)
+			return nil, logThenErrorf("Error creating composite key for InitRequest: %+v", err)
 		}
 		initRequestBytes, err := ctx.GetStub().GetState(initRequestKey)
 		if err != nil {
 			return nil, err
 		}
 		if initRequestBytes == nil || len(initRequestBytes) == 0 {
-			return nil, fmt.Errorf("Invalid transaction. InitRequest not recorded yet.")
+			return nil, logThenErrorf("Invalid transaction. InitRequest not recorded yet.")
 		}
 		// Unmarshal the InitRequest
 		initRequest, err := unmarshalDBEInitVal(initRequestBytes)
@@ -214,14 +214,14 @@ func GetLastRequestDBEParams(ctx contractapi.TransactionContextInterface, entity
 		previousEntityIdStr := strconv.Itoa(entityId - 1)
 		previousUpdateRequestKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, previousEntityIdStr})
 		if err != nil {
-			return nil, fmt.Errorf("Error creating composite key for UpdateRequest for entity Id %d: %+v", entityId - 1, err)
+			return nil, logThenErrorf("Error creating composite key for UpdateRequest for entity Id %d: %+v", entityId - 1, err)
 		}
 		previousUpdateRequestBytes, err := ctx.GetStub().GetState(previousUpdateRequestKey)
 		if err != nil {
 			return nil, err
 		}
 		if previousUpdateRequestBytes == nil || len(previousUpdateRequestBytes) == 0 {
-			return nil, fmt.Errorf("Invalid transaction. UpdateRequest not recorded for entity Id %d.", entityId - 1)
+			return nil, logThenErrorf("Invalid transaction. UpdateRequest not recorded for entity Id %d.", entityId - 1)
 		}
 		// Unmarshal the UpdateRequest
 		previousUpdateRequest, err := unmarshalDBEUpdateVal(previousUpdateRequestBytes)
@@ -237,29 +237,29 @@ func GetLastRequestDBEParams(ctx contractapi.TransactionContextInterface, entity
 func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextInterface, entityId int) error {
 	// Check if an UpdateRequest is already recorded for this entityId. If so, return.
 	if entityId < 1 {
-		return fmt.Errorf("Invalid entity ID %d. Must be >= 1", entityId)
+		return logThenErrorf("Invalid entity ID %d. Must be >= 1", entityId)
 	}
 	entityIdStr := strconv.Itoa(entityId)
 	updateRequestKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, entityIdStr})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest for entity Id %d: %+v", entityId, err)
+		return logThenErrorf("Error creating composite key for UpdateRequest for entity Id %d: %+v", entityId, err)
 	}
 	updateRequestBytes, err := ctx.GetStub().GetState(updateRequestKey)
 	if err != nil {
 		return err
 	}
 	if updateRequestBytes != nil && len(updateRequestBytes) != 0 {
-		return fmt.Errorf("Invalid transaction. UpdateRequest already recorded for entity Id %d.", entityId)
+		return logThenErrorf("Invalid transaction. UpdateRequest already recorded for entity Id %d.", entityId)
 	}
 
 	// Check if the org MSP ID trying to record an UpdateRequest is unique (i.e., it hasn't recorded one yet)
 	orgMSPID, err := shim.GetMSPID()
 	if err != nil {
-		return fmt.Errorf("Failed to get peer's Org MSPID: %+v", err)
+		return logThenErrorf("Failed to get peer's Org MSPID: %+v", err)
 	}
 	updateRequestOrgPresenceKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, orgMSPID})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest for org MSP ID %s presence: %+v", orgMSPID, err)
+		return logThenErrorf("Error creating composite key for UpdateRequest for org MSP ID %s presence: %+v", orgMSPID, err)
 	}
 	updateRequestOrgPresenceBytes, err := ctx.GetStub().GetState(updateRequestOrgPresenceKey)
 	if err != nil {
@@ -267,7 +267,7 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 	}
 	// The value should be the entityId (or the counter), but here we don't care what it is as long as it isn't empty
 	if updateRequestOrgPresenceBytes != nil && len(updateRequestOrgPresenceBytes) != 0 {
-		return fmt.Errorf("Invalid transaction. UpdateRequest already recorded for org MSP ID %s.", orgMSPID)
+		return logThenErrorf("Invalid transaction. UpdateRequest already recorded for org MSP ID %s.", orgMSPID)
 	}
 
 	// Lookup the previous UpdateRequest (or InitRequest) params
@@ -287,7 +287,7 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 	// Serialize the secret for recording
 	secretBytes, err := marshalDBESecret(secret)
 	if err != nil {
-		return fmt.Errorf("Error marshalling the secret for entity Id %d: %+v", entityId, err)
+		return logThenErrorf("Error marshalling the secret for entity Id %d: %+v", entityId, err)
 	}
 
 	// Record 'secret' in this peer's org's PDC
@@ -305,22 +305,22 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 	// Serialize the UpdateRequest for recording
 	updateRequestBytes, err = marshalDBEUpdateVal(updateRequest)
 	if err != nil {
-		return fmt.Errorf("Error marshalling the UpdateRequest object for entity Id %d: %+v", entityId, err)
+		return logThenErrorf("Error marshalling the UpdateRequest object for entity Id %d: %+v", entityId, err)
 	}
 
 	err = ctx.GetStub().PutState(updateRequestKey, updateRequestBytes)
 	if err != nil {
-		return fmt.Errorf("Error recording the UpdateRequest object for entity Id %d on ledger: %+v", entityId, err)
+		return logThenErrorf("Error recording the UpdateRequest object for entity Id %d on ledger: %+v", entityId, err)
 	}
 
 	// Record the latest entityId on ledger for lookup
 	updateRequestLatestEntityIdKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSLatestEntityIdKey})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest latest entity Id %d: %+v", entityId, err)
+		return logThenErrorf("Error creating composite key for UpdateRequest latest entity Id %d: %+v", entityId, err)
 	}
 	err = ctx.GetStub().PutState(updateRequestLatestEntityIdKey, []byte(entityIdStr))
 	if err != nil {
-		return fmt.Errorf("Error recording the UpdateRequest latest entity Id %d on ledger: %+v", entityId, err)
+		return logThenErrorf("Error recording the UpdateRequest latest entity Id %d on ledger: %+v", entityId, err)
 	}
 
 	// Record the Org MSPID and version number of the peer creating this UpdateRequest
@@ -330,17 +330,17 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 	}
 	updateRequestOrgKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSOrgKey, entityIdStr})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest Org for entity Id %d: %+v", entityId, err)
+		return logThenErrorf("Error creating composite key for UpdateRequest Org for entity Id %d: %+v", entityId, err)
 	}
 	err = ctx.GetStub().PutState(updateRequestOrgKey, []byte(orgMSPID))
 	if err != nil {
-		return fmt.Errorf("Error recording the UpdateRequest Org for entity Id %d: %+v", entityId, err)
+		return logThenErrorf("Error recording the UpdateRequest Org for entity Id %d: %+v", entityId, err)
 	}
 
 	// Record the status of the UpdateRequest
 	updateRequestStatusKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSStatusKey, entityIdStr})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest status for entity Id %d: %+v", entityId, err)
+		return logThenErrorf("Error creating composite key for UpdateRequest status for entity Id %d: %+v", entityId, err)
 	}
 	return ctx.GetStub().PutState(updateRequestStatusKey, []byte(dbeSRSProposed))
 }
@@ -349,14 +349,14 @@ func (s *SmartContract) ValidateDbeUpdateVal(ctx contractapi.TransactionContextI
 	// Read the latest entityId on ledger
 	updateRequestLatestEntityIdKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSLatestEntityIdKey})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest latest entity Id: %+v", err)
+		return logThenErrorf("Error creating composite key for UpdateRequest latest entity Id: %+v", err)
 	}
 	latestEntityIdBytes, err := ctx.GetStub().GetState(updateRequestLatestEntityIdKey)
 	if err != nil {
 		return err
 	}
 	if latestEntityIdBytes == nil || len(latestEntityIdBytes) == 0 {
-		return fmt.Errorf("Invalid transaction. No UpdateRequest recorded yet.")
+		return logThenErrorf("Invalid transaction. No UpdateRequest recorded yet.")
 	}
 	latestEntityIdStr := string(latestEntityIdBytes)
 	latestEntityId, err := strconv.Atoi(latestEntityIdStr)
@@ -368,30 +368,30 @@ func (s *SmartContract) ValidateDbeUpdateVal(ctx contractapi.TransactionContextI
 	// Lookup UpdateRequest corresponding to 'latestEntityId'
 	updateRequestKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, latestEntityIdStr})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest for latest entity Id %d: %+v", latestEntityId, err)
+		return logThenErrorf("Error creating composite key for UpdateRequest for latest entity Id %d: %+v", latestEntityId, err)
 	}
 	updateRequestBytes, err := ctx.GetStub().GetState(updateRequestKey)
 	if err != nil {
 		return err
 	}
 	if updateRequestBytes == nil || len(updateRequestBytes) == 0 {
-		return fmt.Errorf("Invalid ledger state. UpdateRequest not recorded for latest entity Id %d.", latestEntityId)
+		return logThenErrorf("Invalid ledger state. UpdateRequest not recorded for latest entity Id %d.", latestEntityId)
 	}
 
 	// Lookup the status. If it is 'VALIDATED`, return failure.
 	updateRequestStatusKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSStatusKey, latestEntityIdStr})
 	if err != nil {
-		return fmt.Errorf("Error creating composite key for UpdateRequest status for entity Id %d: %+v", latestEntityId, err)
+		return logThenErrorf("Error creating composite key for UpdateRequest status for entity Id %d: %+v", latestEntityId, err)
 	}
 	updateRequestStatusBytes, err := ctx.GetStub().GetState(updateRequestStatusKey)
 	if err != nil {
 		return err
 	}
 	if updateRequestStatusBytes == nil || len(updateRequestStatusBytes) == 0 {
-		return fmt.Errorf("Empty UpdateRequest status recorded on the ledger for entity Id %d.", latestEntityId)
+		return logThenErrorf("Empty UpdateRequest status recorded on the ledger for entity Id %d.", latestEntityId)
 	}
 	if string(updateRequestStatusBytes) == dbeSRSValidated {
-		return fmt.Errorf("UpdateRequest already validated.")
+		return logThenErrorf("UpdateRequest already validated.")
 	}
 
 	// Lookup the previous UpdateRequest (or InitRequest) params
@@ -413,49 +413,49 @@ func (s *SmartContract) ValidateDbeUpdateVal(ctx contractapi.TransactionContextI
 		if err != nil {
 			retErr = err
 		} else {
-			retErr = fmt.Errorf("Init value verification failed.")
+			retErr = logThenErrorf("Init value verification failed.")
 		}
 
 		// Cleanup: delete some of the key value pairs if the validation fails (i.e., the update request recorded was invalid)
 		err = ctx.GetStub().DelState(updateRequestKey)
 		if err != nil {
-			return fmt.Errorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestKey, err, retErr)
+			return logThenErrorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestKey, err, retErr)
 		}
 		updateRequestOrgKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSOrgKey, latestEntityIdStr})
 		if err != nil {
-			return fmt.Errorf("Error creating composite key for UpdateRequest Org for entity Id %d: %+v. UpdateRequest verification error: %+v", latestEntityId, err, retErr)
+			return logThenErrorf("Error creating composite key for UpdateRequest Org for entity Id %d: %+v. UpdateRequest verification error: %+v", latestEntityId, err, retErr)
 		}
 		orgMSPIDBytes, err := ctx.GetStub().GetState(updateRequestOrgKey)
 		if err != nil {
-			return fmt.Errorf("Error reading key %s: %+v. UpdateRequest verification error: %+v", updateRequestOrgKey, err, retErr)
+			return logThenErrorf("Error reading key %s: %+v. UpdateRequest verification error: %+v", updateRequestOrgKey, err, retErr)
 		}
 		err = ctx.GetStub().DelState(updateRequestOrgKey)
 		if err != nil {
-			return fmt.Errorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestOrgKey, err, retErr)
+			return logThenErrorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestOrgKey, err, retErr)
 		}
 		updateRequestOrgPresenceKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, string(orgMSPIDBytes)})
 		if err != nil {
-			return fmt.Errorf("Error creating composite key for UpdateRequest for org MSP ID %s presence: %+v. UpdateRequest verification error: %+v", string(orgMSPIDBytes), err, retErr)
+			return logThenErrorf("Error creating composite key for UpdateRequest for org MSP ID %s presence: %+v. UpdateRequest verification error: %+v", string(orgMSPIDBytes), err, retErr)
 		}
 		err = ctx.GetStub().DelState(updateRequestOrgPresenceKey)
 		if err != nil {
-			return fmt.Errorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestOrgPresenceKey, err, retErr)
+			return logThenErrorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestOrgPresenceKey, err, retErr)
 		}
 		previousEntityIdStr := strconv.Itoa(latestEntityId - 1)
 		if latestEntityId > 1 {
 			err = ctx.GetStub().PutState(updateRequestLatestEntityIdKey, []byte(previousEntityIdStr))
 			if err != nil {
-				return fmt.Errorf("Error replacing key %s: %+v. UpdateRequest verification error: %+v", updateRequestLatestEntityIdKey, err, retErr)
+				return logThenErrorf("Error replacing key %s: %+v. UpdateRequest verification error: %+v", updateRequestLatestEntityIdKey, err, retErr)
 			}
 		} else {
 			err = ctx.GetStub().DelState(updateRequestLatestEntityIdKey)
 			if err != nil {
-				return fmt.Errorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestLatestEntityIdKey, err, retErr)
+				return logThenErrorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestLatestEntityIdKey, err, retErr)
 			}
 		}
 		err = ctx.GetStub().DelState(updateRequestStatusKey)
 		if err != nil {
-			return fmt.Errorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestStatusKey, err, retErr)
+			return logThenErrorf("Error deleting key %s: %+v. UpdateRequest verification error: %+v", updateRequestStatusKey, err, retErr)
 		}
 
 		return retErr
@@ -470,14 +470,14 @@ func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionCont
 	// Read the latest entityId on ledger
 	updateRequestLatestEntityIdKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSLatestEntityIdKey})
 	if err != nil {
-		return "", fmt.Errorf("Error creating composite key for UpdateRequest latest entity Id: %+v", err)
+		return "", logThenErrorf("Error creating composite key for UpdateRequest latest entity Id: %+v", err)
 	}
 	latestEntityIdBytes, err := ctx.GetStub().GetState(updateRequestLatestEntityIdKey)
 	if err != nil {
 		return "", err
 	}
 	if latestEntityIdBytes == nil || len(latestEntityIdBytes) == 0 {
-		return "", fmt.Errorf("Invalid transaction. No UpdateRequest recorded yet.")
+		return "", logThenErrorf("Invalid transaction. No UpdateRequest recorded yet.")
 	}
 	latestEntityIdStr := string(latestEntityIdBytes)
 	latestEntityId, err := strconv.Atoi(latestEntityIdStr)
@@ -489,27 +489,27 @@ func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionCont
 	// Lookup UpdateRequest corresponding to 'latestEntityId'
 	updateRequestKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, latestEntityIdStr})
 	if err != nil {
-		return "", fmt.Errorf("Error creating composite key for UpdateRequest for latest entity Id %d: %+v", latestEntityId, err)
+		return "", logThenErrorf("Error creating composite key for UpdateRequest for latest entity Id %d: %+v", latestEntityId, err)
 	}
 	updateRequestBytes, err := ctx.GetStub().GetState(updateRequestKey)
 	if err != nil {
 		return "", err
 	}
 	if updateRequestBytes == nil || len(updateRequestBytes) == 0 {
-		return "", fmt.Errorf("Invalid ledger state. UpdateRequest not recorded for latest entity Id %d.", latestEntityId)
+		return "", logThenErrorf("Invalid ledger state. UpdateRequest not recorded for latest entity Id %d.", latestEntityId)
 	}
 
 	// Lookup the status.
 	updateRequestStatusKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSStatusKey, latestEntityIdStr})
 	if err != nil {
-		return "", fmt.Errorf("Error creating composite key for UpdateRequest status for entity Id %d: %+v", latestEntityId, err)
+		return "", logThenErrorf("Error creating composite key for UpdateRequest status for entity Id %d: %+v", latestEntityId, err)
 	}
 	updateRequestStatusBytes, err := ctx.GetStub().GetState(updateRequestStatusKey)
 	if err != nil {
 		return "", err
 	}
 	if updateRequestStatusBytes == nil || len(updateRequestStatusBytes) == 0 {
-		return "", fmt.Errorf("Empty UpdateRequest status recorded on the ledger for entity Id %d.", latestEntityId)
+		return "", logThenErrorf("Empty UpdateRequest status recorded on the ledger for entity Id %d.", latestEntityId)
 	}
 
 	var dbeUpdateInfo *common.DBEKey
@@ -533,7 +533,7 @@ func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionCont
 
 		// If 'latestEntityId' <= 1, return error
 		if latestEntityId <= 1 {
-			return "", fmt.Errorf("No UpdateRequest validated on ledger yet")
+			return "", logThenErrorf("No UpdateRequest validated on ledger yet")
 		}
 		lastUpdateRequestParams, err := GetLastRequestDBEParams(ctx, latestEntityId)
 		if err != nil {
@@ -559,12 +559,12 @@ func GetDbeUpdateLocalVersion(ctx contractapi.TransactionContextInterface) (int,
 	// Get my org MSP ID
 	orgMSPID, err := shim.GetMSPID()
 	if err != nil {
-		return 0, fmt.Errorf("Failed to get peer's Org MSPID: %+v", err)
+		return 0, logThenErrorf("Failed to get peer's Org MSPID: %+v", err)
 	}
 	// Lookup the version number corresponding to my org's position in the update sequence
 	updateRequestOrgPresenceKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSKey, orgMSPID})
 	if err != nil {
-		return 0, fmt.Errorf("Error creating composite key for UpdateRequest for org MSP ID %s presence: %+v", orgMSPID, err)
+		return 0, logThenErrorf("Error creating composite key for UpdateRequest for org MSP ID %s presence: %+v", orgMSPID, err)
 	}
 	updateRequestOrgPresenceBytes, err := ctx.GetStub().GetState(updateRequestOrgPresenceKey)
 	if err != nil {
@@ -582,14 +582,14 @@ func GetSecretKey(ctx contractapi.TransactionContextInterface) (*math.Zr, error)
 	// Get collection name for my organization.
 	orgCollection, err := getCollectionName(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to infer private collection name for the org: %v", err)
+		return nil, logThenErrorf("Failed to infer private collection name for the org: %v", err)
 	}
 
 	// Read the serialized secret key from the collection (see func recordSecretInPrivateCollection for the write counterpart)
 	secretKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeSecretKey})
 	secretBytes, err := ctx.GetStub().GetPrivateData(orgCollection, secretKey)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to fetch secret for key %s from collection %s: %v", secretKey, orgCollection, err)
+		return nil, logThenErrorf("Failed to fetch secret for key %s from collection %s: %v", secretKey, orgCollection, err)
 	}
 	log.Printf("Get: collection %s, key %s, value %s", orgCollection, secretKey, string(secretBytes))
 

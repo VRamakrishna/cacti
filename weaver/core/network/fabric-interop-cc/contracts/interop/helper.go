@@ -49,7 +49,7 @@ func strArrToBytesArr(strArray []string) [][]byte {
 func parseAddress(address string) (*Address, error) {
     addressList := strings.Split(address, "/")
     if len(addressList) != 3 {
-        return nil, fmt.Errorf("Invalid Address. Address should have three segments. %s", address)
+        return nil, logThenErrorf("Invalid Address. Address should have three segments. %s", address)
     }
 
     return &Address{
@@ -64,11 +64,11 @@ func parseAddress(address string) (*Address, error) {
 // It splits on ':' to get sections in the viewAddress. Channel, Contract, CCFunc, the rest are arguments for the chaincode
 func parseFabricViewAddress(viewAddress string) (*FabricViewAddress, error) {
     if strings.Contains(viewAddress, "/") {
-        return nil, fmt.Errorf("View segment contains a '/' %s", viewAddress)
+        return nil, logThenErrorf("View segment contains a '/' %s", viewAddress)
     }
     fabricArgs := strings.Split(viewAddress, ":")
     if len(fabricArgs) < 3 {
-        return nil, fmt.Errorf("View segment not formatted correctly %s", viewAddress)
+        return nil, logThenErrorf("View segment not formatted correctly %s", viewAddress)
     }
 
     return &FabricViewAddress{Channel: fabricArgs[0], Contract: fabricArgs[1], CCFunc: fabricArgs[2], Args: fabricArgs[3:]}, nil

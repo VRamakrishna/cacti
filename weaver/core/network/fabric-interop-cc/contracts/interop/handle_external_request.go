@@ -84,7 +84,7 @@ func handleRequest(s *SmartContract, ctx contractapi.TransactionContextInterface
 		return "", err
 	}
 	if !relayAccessCheck {
-		return "", fmt.Errorf("Illegal access by client without relay permissions")
+		return "", logThenErrorf("Illegal access by client without relay permissions")
 	}
 	fmt.Println("Relay access check passed")
 

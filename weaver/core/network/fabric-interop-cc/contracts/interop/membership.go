@@ -30,7 +30,7 @@ func validateMemberCertChains(membership *common.Membership) error {
 		if len(member.Chain) > 1 {
 			err := verifyCertificateChain(nil, member.Chain)
 			if err != nil {
-				return fmt.Errorf("Certificate chain corresponding to member %+v in security domain %s is invalid: %s", member, membership.SecurityDomain, err)
+				return logThenErrorf("Certificate chain corresponding to member %+v in security domain %s is invalid: %s", member, membership.SecurityDomain, err)
 			}
 		}
 	}
@@ -43,16 +43,16 @@ func parseAndValidateAttestation(attestation *identity.Attestation, messageBytes
 	// Parse local IIN Agent's certificate
 	cert, err := parseCert(attestation.Certificate)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse attester certificate: %v", err)
+		return nil, logThenErrorf("Unable to parse attester certificate: %v", err)
 	}
 	// We assume the signature is base64-encoded as it is a string type in the 'Attestation' protobuf
 	decodedSignature, err := base64.StdEncoding.DecodeString(attestation.Signature)
 	if err != nil {
-		return nil, fmt.Errorf("Attestation signature could not be decoded from base64: %s", err.Error())
+		return nil, logThenErrorf("Attestation signature could not be decoded from base64: %s", err.Error())
 	}
 	err = validateSignature(messageBytes, cert, string(decodedSignature))
 	if err != nil {
-		return nil, fmt.Errorf("Unable to Validate Signature: %s", err.Error())
+		return nil, logThenErrorf("Unable to Validate Signature: %s", err.Error())
 	}
 	return cert, nil
 }
@@ -61,29 +61,29 @@ func parseAndValidateAttestation(attestation *identity.Attestation, messageBytes
 func parseCounterAttestedMembership(counterAttestedMembershipSerialized string) (*identity.CounterAttestedMembership, *identity.CounterAttestedMembership_AttestedMembershipSet, *common.Membership, error) {
 	counterAttestedMembership, err := decodeCounterAttestedMembership(counterAttestedMembershipSerialized)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Counter Attested Membership Unmarshal error: %s", err)
+		return nil, nil, nil, logThenErrorf("Counter Attested Membership Unmarshal error: %s", err)
 	}
 	attestedMembershipSet64 := counterAttestedMembership.GetAttestedMembershipSet()
 	if attestedMembershipSet64 == "" {
-		return nil, nil, nil, fmt.Errorf("Attested Membership Set empty with error: %s", counterAttestedMembership.GetError())
+		return nil, nil, nil, logThenErrorf("Attested Membership Set empty with error: %s", counterAttestedMembership.GetError())
 	}
 	decodedAttestedMembershipSet, err := base64.StdEncoding.DecodeString(attestedMembershipSet64)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Attested membership set could not be decoded from base64: %s", err.Error())
+		return nil, nil, nil, logThenErrorf("Attested membership set could not be decoded from base64: %s", err.Error())
 	}
 	var attestedMembershipSet identity.CounterAttestedMembership_AttestedMembershipSet
 	err = protoV2.Unmarshal(decodedAttestedMembershipSet, &attestedMembershipSet)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Unable to unmarshal attested membership set: %s", err.Error())
+		return nil, nil, nil, logThenErrorf("Unable to unmarshal attested membership set: %s", err.Error())
 	}
 	decodedForeignMembership, err := base64.StdEncoding.DecodeString(attestedMembershipSet.Membership)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Foreign membership could not be decoded from base64: %s", err.Error())
+		return nil, nil, nil, logThenErrorf("Foreign membership could not be decoded from base64: %s", err.Error())
 	}
 	var foreignMembership common.Membership
 	err = protoV2.Unmarshal(decodedForeignMembership, &foreignMembership)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Unable to unmarshal membership: %s", err.Error())
+		return nil, nil, nil, logThenErrorf("Unable to unmarshal membership: %s", err.Error())
 	}
 	return counterAttestedMembership, &attestedMembershipSet, &foreignMembership, nil
 }
@@ -98,7 +98,7 @@ func validateAttestationsList(membership *common.Membership, attestations []*ide
 	var attestationsMap = make(map[string]bool)
 	for _, attestation := range attestations {
 		if attestation.UnitIdentity.SecurityDomain != membership.SecurityDomain {
-			return fmt.Errorf("IIN Agent security domain %s does not match with membership security domain %s",
+			return logThenErrorf("IIN Agent security domain %s does not match with membership security domain %s",
 				attestation.UnitIdentity.SecurityDomain, membership.SecurityDomain)
 		}
 
@@ -111,7 +111,7 @@ func validateAttestationsList(membership *common.Membership, attestations []*ide
 		// Verify membership of attester
 		err = verifyMemberInSecurityDomain2("", attesterCert, membership, attestation.UnitIdentity.MemberId)
 		if err != nil {
-			return fmt.Errorf("Attester with certificate %+v is not a designated IIN Agent of org %s in security domain %s: %+v",
+			return logThenErrorf("Attester with certificate %+v is not a designated IIN Agent of org %s in security domain %s: %+v",
 				attesterCert, attestation.UnitIdentity.MemberId, attestation.UnitIdentity.SecurityDomain, err)
 		}
 
@@ -119,7 +119,7 @@ func validateAttestationsList(membership *common.Membership, attestations []*ide
 	}
 	for memberId := range membership.Members {
 		if _, ok := attestationsMap[memberId]; !ok {
-			return fmt.Errorf("Missing attestation from %s of security domain %s", memberId, membership.SecurityDomain)
+			return logThenErrorf("Missing attestation from %s of security domain %s", memberId, membership.SecurityDomain)
 		}
 	}
 	return nil
@@ -136,7 +136,7 @@ func validateCounterAttestedMembership(s *SmartContract, ctx contractapi.Transac
 			matchedNonce = attestation.Nonce
 		} else {
 			if matchedNonce != attestation.Nonce {
-				return fmt.Errorf("Mismatched nonces across two attestations: %s, %s", matchedNonce, attestation.Nonce)
+				return logThenErrorf("Mismatched nonces across two attestations: %s, %s", matchedNonce, attestation.Nonce)
 			}
 		}
 	}
@@ -148,7 +148,7 @@ func validateCounterAttestedMembership(s *SmartContract, ctx contractapi.Transac
 	}
 	localMembership, err := decodeMembership([]byte(localMembershipString))
 	if err != nil {
-		return fmt.Errorf("Failed to unmarshal membership: %s", err.Error())
+		return logThenErrorf("Failed to unmarshal membership: %s", err.Error())
 	}
 	err = validateAttestationsList(localMembership, counterAttestedMembership.Attestations, counterAttestedMembership.GetAttestedMembershipSet() + matchedNonce)
 	if err != nil {
@@ -174,14 +174,14 @@ func validateCounterAttestedMembership(s *SmartContract, ctx contractapi.Transac
 func (s *SmartContract) CreateLocalMembership(ctx contractapi.TransactionContextInterface, membershipSerialized64 string) error {
 	// Check if the caller has network admin privileges
 	if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-		return fmt.Errorf("Admin client check error: %s", err)
+		return logThenErrorf("Admin client check error: %s", err)
 	} else if !isAdmin {
-		return fmt.Errorf("Caller not a network admin; access denied")
+		return logThenErrorf("Caller not a network admin; access denied")
 	}
 
 	membership, err := decodeMembershipSerialized64(membershipSerialized64)
 	if err != nil {
-		return fmt.Errorf("Unmarshal error: %s", err)
+		return logThenErrorf("Unmarshal error: %s", err)
 	}
 
 	membershipLocalKey, err := ctx.GetStub().CreateCompositeKey(membershipObjectType, []string{membershipLocalSecurityDomain})
@@ -190,7 +190,7 @@ func (s *SmartContract) CreateLocalMembership(ctx contractapi.TransactionContext
 		return getErr
 	}
 	if acp != nil {
-		return fmt.Errorf("Membership already exists for local membership id: %s. Use 'UpdateLocalMembership' to update.", membershipLocalSecurityDomain)
+		return logThenErrorf("Membership already exists for local membership id: %s. Use 'UpdateLocalMembership' to update.", membershipLocalSecurityDomain)
 	}
 
 	// Check if certificates chains in this membership record are valid
@@ -202,7 +202,7 @@ func (s *SmartContract) CreateLocalMembership(ctx contractapi.TransactionContext
 	fmt.Printf("Recording Local Membership with securityDomain: %s\n", membershipLocalSecurityDomain)
 	membershipBytes, err := json.Marshal(membership)
 	if err != nil {
-		return fmt.Errorf("Marshal error: %s", err)
+		return logThenErrorf("Marshal error: %s", err)
 	}
 	return ctx.GetStub().PutState(membershipLocalKey, membershipBytes)
 }
@@ -211,14 +211,14 @@ func (s *SmartContract) CreateLocalMembership(ctx contractapi.TransactionContext
 func (s *SmartContract) UpdateLocalMembership(ctx contractapi.TransactionContextInterface, membershipSerialized64 string) error {
 	// Check if the caller has network admin privileges
 	if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-		return fmt.Errorf("Admin client check error: %+v", err)
+		return logThenErrorf("Admin client check error: %+v", err)
 	} else if !isAdmin {
-		return fmt.Errorf("Caller not a network admin; access denied")
+		return logThenErrorf("Caller not a network admin; access denied")
 	}
 
 	membership, err := decodeMembershipSerialized64(membershipSerialized64)
 	if err != nil {
-		return fmt.Errorf("Unmarshal error: %s", err)
+		return logThenErrorf("Unmarshal error: %s", err)
 	}
 
 	membershipLocalKey, err := ctx.GetStub().CreateCompositeKey(membershipObjectType, []string{membershipLocalSecurityDomain})
@@ -235,7 +235,7 @@ func (s *SmartContract) UpdateLocalMembership(ctx contractapi.TransactionContext
 
 	membershipBytes, err := json.Marshal(membership)
 	if err != nil {
-		return fmt.Errorf("Marshal error: %s", err)
+		return logThenErrorf("Marshal error: %s", err)
 	}
 	return ctx.GetStub().PutState(membershipLocalKey, membershipBytes)
 
@@ -246,13 +246,13 @@ func (s *SmartContract) UpdateLocalMembership(ctx contractapi.TransactionContext
 func (s *SmartContract) CreateMembership(ctx contractapi.TransactionContextInterface, counterAttestedMembershipSerialized string) error {
 	// Check if the caller has IIN agent privileges
 	if isIINAgent, err := wutils.IsClientIINAgent(ctx); err != nil {
-		return fmt.Errorf("IIN Agent client check error: %s", err)
+		return logThenErrorf("IIN Agent client check error: %s", err)
 	} else if !isIINAgent {
 		// Check if the caller has network admin privileges
 		if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-			return fmt.Errorf("Admin client check error: %s", err)
+			return logThenErrorf("Admin client check error: %s", err)
 		} else if !isAdmin {
-			return fmt.Errorf("Caller neither a network admin nor an IIN Agent; access denied")
+			return logThenErrorf("Caller neither a network admin nor an IIN Agent; access denied")
 		}
 		return createMembership(ctx, counterAttestedMembershipSerialized)		// HACK to handle unattested memberships (for Corda) for backward compatibility
 	}
@@ -270,7 +270,7 @@ func (s *SmartContract) CreateMembership(ctx contractapi.TransactionContextInter
 		return getErr
 	}
 	if acp != nil {
-		return fmt.Errorf("Membership already exists for membership id: %s. Use 'UpdateMembership' to update.", foreignMembership.SecurityDomain)
+		return logThenErrorf("Membership already exists for membership id: %s. Use 'UpdateMembership' to update.", foreignMembership.SecurityDomain)
 	}
 
 	// Validate the counter attested membership structure and the structures embedded in it
@@ -282,7 +282,7 @@ func (s *SmartContract) CreateMembership(ctx contractapi.TransactionContextInter
 	fmt.Printf("Recording Foreign Membership with securityDomain: %s\n", foreignMembership.SecurityDomain)
 	membershipBytes, err := json.Marshal(foreignMembership)
 	if err != nil {
-		return fmt.Errorf("Marshal error: %s", err)
+		return logThenErrorf("Marshal error: %s", err)
 	}
 	return ctx.GetStub().PutState(membershipKey, membershipBytes)
 }
@@ -292,7 +292,7 @@ func (s *SmartContract) CreateMembership(ctx contractapi.TransactionContextInter
 func createMembership(ctx contractapi.TransactionContextInterface, membershipJSON string) error {
 	membership, err := decodeMembership([]byte(membershipJSON))
 	if err != nil {
-		return fmt.Errorf("Unmarshal error: %s", err)
+		return logThenErrorf("Unmarshal error: %s", err)
 	}
 	// Check if certificates chains in this membership record are valid
 	err = validateMemberCertChains(membership)
@@ -306,12 +306,12 @@ func createMembership(ctx contractapi.TransactionContextInterface, membershipJSO
 		return getErr
 	}
 	if acp != nil {
-		return fmt.Errorf("Membership already exists for membership id: %s. Use 'UpdateMembership' to update.", membership.SecurityDomain)
+		return logThenErrorf("Membership already exists for membership id: %s. Use 'UpdateMembership' to update.", membership.SecurityDomain)
 	}
 
 	membershipBytes, err := json.Marshal(membership)
 	if err != nil {
-		return fmt.Errorf("Marshal error: %s", err)
+		return logThenErrorf("Marshal error: %s", err)
 	}
 	return ctx.GetStub().PutState(membershipKey, membershipBytes)
 }
@@ -321,13 +321,13 @@ func createMembership(ctx contractapi.TransactionContextInterface, membershipJSO
 func (s *SmartContract) UpdateMembership(ctx contractapi.TransactionContextInterface, counterAttestedMembershipSerialized string) error {
 	// Check if the caller has IIN agent privileges
 	if isIINAgent, err := wutils.IsClientIINAgent(ctx); err != nil {
-		return fmt.Errorf("IIN Agent client check error: %s", err)
+		return logThenErrorf("IIN Agent client check error: %s", err)
 	} else if !isIINAgent {
 		// Check if the caller has network admin privileges
 		if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-			return fmt.Errorf("Admin client check error: %s", err)
+			return logThenErrorf("Admin client check error: %s", err)
 		} else if !isAdmin {
-			return fmt.Errorf("Caller neither a network admin nor an IIN Agent; access denied")
+			return logThenErrorf("Caller neither a network admin nor an IIN Agent; access denied")
 		}
 		return updateMembership(s, ctx, counterAttestedMembershipSerialized)		// HACK to handle unattested memberships (for Corda) for backward compatibility
 	}
@@ -353,7 +353,7 @@ func (s *SmartContract) UpdateMembership(ctx contractapi.TransactionContextInter
 
 	membershipBytes, err := json.Marshal(foreignMembership)
 	if err != nil {
-		return fmt.Errorf("Marshal error: %s", err)
+		return logThenErrorf("Marshal error: %s", err)
 	}
 	return ctx.GetStub().PutState(membershipKey, membershipBytes)
 
@@ -364,7 +364,7 @@ func (s *SmartContract) UpdateMembership(ctx contractapi.TransactionContextInter
 func updateMembership(s *SmartContract, ctx contractapi.TransactionContextInterface, membershipJSON string) error {
 	membership, err := decodeMembership([]byte(membershipJSON))
 	if err != nil {
-		return fmt.Errorf("Unmarshal error: %s", err)
+		return logThenErrorf("Unmarshal error: %s", err)
 	}
 	// Check if certificates chains in this membership record are valid
 	err = validateMemberCertChains(membership)
@@ -380,7 +380,7 @@ func updateMembership(s *SmartContract, ctx contractapi.TransactionContextInterf
 
 	membershipBytes, err := json.Marshal(membership)
 	if err != nil {
-		return fmt.Errorf("Marshal error: %s", err)
+		return logThenErrorf("Marshal error: %s", err)
 	}
 	return ctx.GetStub().PutState(membershipKey, membershipBytes)
 
@@ -390,9 +390,9 @@ func updateMembership(s *SmartContract, ctx contractapi.TransactionContextInterf
 func (s *SmartContract) DeleteLocalMembership(ctx contractapi.TransactionContextInterface) error {
 	// Check if the caller has network admin privileges
 	if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-		return fmt.Errorf("Admin client check error: %s", err)
+		return logThenErrorf("Admin client check error: %s", err)
 	} else if !isAdmin {
-		return fmt.Errorf("Caller not a network admin; access denied")
+		return logThenErrorf("Caller not a network admin; access denied")
 	}
 
 	membershipLocalKey, err := ctx.GetStub().CreateCompositeKey(membershipObjectType, []string{membershipLocalSecurityDomain})
@@ -401,11 +401,11 @@ func (s *SmartContract) DeleteLocalMembership(ctx contractapi.TransactionContext
 		return err
 	}
 	if bytes == nil {
-		return fmt.Errorf("Local membership with id: %s does not exist", membershipLocalSecurityDomain)
+		return logThenErrorf("Local membership with id: %s does not exist", membershipLocalSecurityDomain)
 	}
 	err = ctx.GetStub().DelState(membershipLocalKey)
 	if err != nil {
-		return fmt.Errorf("failed to delete asset %s: %v", membershipLocalKey, err)
+		return logThenErrorf("failed to delete asset %s: %v", membershipLocalKey, err)
 	}
 
 	return nil
@@ -415,13 +415,13 @@ func (s *SmartContract) DeleteLocalMembership(ctx contractapi.TransactionContext
 func (s *SmartContract) DeleteMembership(ctx contractapi.TransactionContextInterface, membershipID string) error {
 	// Check if the caller has IIN agent privileges
 	if isIINAgent, err := wutils.IsClientIINAgent(ctx); err != nil {
-		return fmt.Errorf("IIN Agent client check error: %s", err)
+		return logThenErrorf("IIN Agent client check error: %s", err)
 	} else if !isIINAgent {
 		// Check if the caller has network admin privileges
 		if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-			return fmt.Errorf("Admin client check error: %s", err)
+			return logThenErrorf("Admin client check error: %s", err)
 		} else if !isAdmin {
-			return fmt.Errorf("Caller neither a network admin nor an IIN Agent; access denied")
+			return logThenErrorf("Caller neither a network admin nor an IIN Agent; access denied")
 		}
 	}
 
@@ -431,11 +431,11 @@ func (s *SmartContract) DeleteMembership(ctx contractapi.TransactionContextInter
 		return err
 	}
 	if bytes == nil {
-		return fmt.Errorf("Membership with id: %s does not exist", membershipID)
+		return logThenErrorf("Membership with id: %s does not exist", membershipID)
 	}
 	err = ctx.GetStub().DelState(membershipKey)
 	if err != nil {
-		return fmt.Errorf("failed to delete asset %s: %v", membershipKey, err)
+		return logThenErrorf("failed to delete asset %s: %v", membershipKey, err)
 	}
 
 	return nil
@@ -449,7 +449,7 @@ func (s *SmartContract) GetMembershipBySecurityDomain(ctx contractapi.Transactio
 		return "", err
 	}
 	if bytes == nil {
-		return "", fmt.Errorf("Membership with id: %s does not exist", securityDomain)
+		return "", logThenErrorf("Membership with id: %s does not exist", securityDomain)
 	}
 
 	return string(bytes), nil
@@ -463,7 +463,7 @@ func (s *SmartContract) GetMembershipBySecurityDomain(ctx contractapi.Transactio
 func verifyMemberInSecurityDomain(s *SmartContract, ctx contractapi.TransactionContextInterface, certPEM string, securityDomain string, requestingOrg string) error {
 	cert, err := parseCert(certPEM)
 	if err != nil {
-		return fmt.Errorf("Unable to parse certificate: %s", err.Error())
+		return logThenErrorf("Unable to parse certificate: %s", err.Error())
 	}
 	return verifyMemberInSecurityDomain1(s, ctx, certPEM, cert, securityDomain, requestingOrg)
 }
@@ -479,7 +479,7 @@ func verifyMemberInSecurityDomain1(s *SmartContract, ctx contractapi.Transaction
 	}
 	membership, err := decodeMembership([]byte(membershipString))
 	if err != nil {
-		return fmt.Errorf("Failed to unmarshal membership: %s", err.Error())
+		return logThenErrorf("Failed to unmarshal membership: %s", err.Error())
 	}
 	return verifyMemberInSecurityDomain2(certPEM, cert, membership, requestingOrg)
 }
@@ -495,12 +495,12 @@ func verifyMemberInSecurityDomain2(certPEM string, cert *x509.Certificate, membe
 	}
 	member, ok := membership.Members[requestingOrg]
 	if ok == false {
-		return fmt.Errorf("Member does not exist for org: %s", requestingOrg)
+		return logThenErrorf("Member does not exist for org: %s", requestingOrg)
 	}
 	switch member.Type {
 	case "ca":
 		if member.Value == "" {
-			return fmt.Errorf("CA member certificate is blank")
+			return logThenErrorf("CA member certificate is blank")
 		}
 		if certPEM != member.Value {	// The CA is automatically a member of the security domain
 			err := verifyCaCertificate(cert, member.Value)
@@ -518,7 +518,7 @@ func verifyMemberInSecurityDomain2(certPEM string, cert *x509.Certificate, membe
 			return err
 		}
 	default:
-		return fmt.Errorf("Certificate type not supported: %s", member.Type)
+		return logThenErrorf("Certificate type not supported: %s", member.Type)
 	}
 	return nil
 }

@@ -23,14 +23,14 @@ const verificationPolicyObjectType = "verificationPolicy"
 func (s *SmartContract) CreateVerificationPolicy(ctx contractapi.TransactionContextInterface, verificationPolicyJSON string) error {
 	// Check if the caller has network admin privileges
 	if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-		return fmt.Errorf("Admin client check error: %s", err)
+		return logThenErrorf("Admin client check error: %s", err)
 	} else if !isAdmin {
-		return fmt.Errorf("Caller not a network admin; access denied")
+		return logThenErrorf("Caller not a network admin; access denied")
 	}
 
 	verificationPolicy, err := decodeVerificationPolicy([]byte(verificationPolicyJSON))
 	if err != nil {
-		return fmt.Errorf("Unmarshal error: %s", err)
+		return logThenErrorf("Unmarshal error: %s", err)
 	}
 	verificationPolicyKey, err := ctx.GetStub().CreateCompositeKey(verificationPolicyObjectType, []string{verificationPolicy.SecurityDomain})
 	acp, getErr := ctx.GetStub().GetState(verificationPolicyKey)
@@ -38,12 +38,12 @@ func (s *SmartContract) CreateVerificationPolicy(ctx contractapi.TransactionCont
 		return getErr
 	}
 	if acp != nil {
-		return fmt.Errorf("VerificationPolicy already exists with id: %s", verificationPolicy.SecurityDomain)
+		return logThenErrorf("VerificationPolicy already exists with id: %s", verificationPolicy.SecurityDomain)
 	}
 
 	verificationPolicyBytes, err := json.Marshal(verificationPolicy)
 	if err != nil {
-		return fmt.Errorf("Marshal error: %s", err)
+		return logThenErrorf("Marshal error: %s", err)
 	}
 	return ctx.GetStub().PutState(verificationPolicyKey, verificationPolicyBytes)
 }
@@ -52,14 +52,14 @@ func (s *SmartContract) CreateVerificationPolicy(ctx contractapi.TransactionCont
 func (s *SmartContract) UpdateVerificationPolicy(ctx contractapi.TransactionContextInterface, verificationPolicyJSON string) error {
 	// Check if the caller has network admin privileges
 	if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-		return fmt.Errorf("Admin client check error: %s", err)
+		return logThenErrorf("Admin client check error: %s", err)
 	} else if !isAdmin {
-		return fmt.Errorf("Caller not a network admin; access denied")
+		return logThenErrorf("Caller not a network admin; access denied")
 	}
 
 	verificationPolicy, err := decodeVerificationPolicy([]byte(verificationPolicyJSON))
 	if err != nil {
-		return fmt.Errorf("Unmarshal error: %s", err)
+		return logThenErrorf("Unmarshal error: %s", err)
 	}
 	verificationPolicyKey, err := ctx.GetStub().CreateCompositeKey(verificationPolicyObjectType, []string{verificationPolicy.SecurityDomain})
 	_, err = s.GetVerificationPolicyBySecurityDomain(ctx, verificationPolicy.SecurityDomain)
@@ -69,7 +69,7 @@ func (s *SmartContract) UpdateVerificationPolicy(ctx contractapi.TransactionCont
 
 	verificationPolicyBytes, err := json.Marshal(verificationPolicy)
 	if err != nil {
-		return fmt.Errorf("Marshal error: %s", err)
+		return logThenErrorf("Marshal error: %s", err)
 	}
 	return ctx.GetStub().PutState(verificationPolicyKey, verificationPolicyBytes)
 }
@@ -78,9 +78,9 @@ func (s *SmartContract) UpdateVerificationPolicy(ctx contractapi.TransactionCont
 func (s *SmartContract) DeleteVerificationPolicy(ctx contractapi.TransactionContextInterface, verificationPolicyID string) error {
 	// Check if the caller has network admin privileges
 	if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-		return fmt.Errorf("Admin client check error: %s", err)
+		return logThenErrorf("Admin client check error: %s", err)
 	} else if !isAdmin {
-		return fmt.Errorf("Caller not a network admin; access denied")
+		return logThenErrorf("Caller not a network admin; access denied")
 	}
 
 	verificationPolicyKey, err := ctx.GetStub().CreateCompositeKey(verificationPolicyObjectType, []string{verificationPolicyID})
@@ -89,11 +89,11 @@ func (s *SmartContract) DeleteVerificationPolicy(ctx contractapi.TransactionCont
 		return err
 	}
 	if bytes == nil {
-		return fmt.Errorf("VerificationPolicy with id: %s does not exist", verificationPolicyID)
+		return logThenErrorf("VerificationPolicy with id: %s does not exist", verificationPolicyID)
 	}
 	err = ctx.GetStub().DelState(verificationPolicyKey)
 	if err != nil {
-		return fmt.Errorf("failed to delete asset %s: %v", verificationPolicyKey, err)
+		return logThenErrorf("failed to delete asset %s: %v", verificationPolicyKey, err)
 	}
 
 	return nil
@@ -110,7 +110,7 @@ func (s *SmartContract) GetVerificationPolicyBySecurityDomain(ctx contractapi.Tr
 		return "", err
 	}
 	if bytes == nil {
-		return "", fmt.Errorf("VerificationPolicy with id: %s does not exist", verificationPolicyID)
+		return "", logThenErrorf("VerificationPolicy with id: %s does not exist", verificationPolicyID)
 	}
 
 	return string(bytes), nil
@@ -124,11 +124,11 @@ func resolvePolicy(s *SmartContract, ctx contractapi.TransactionContextInterface
 	// Find verification policy for the network
 	verificationPolicyString, err := s.GetVerificationPolicyBySecurityDomain(ctx, securityDomain)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get verification policy: %s", err.Error())
+		return nil, logThenErrorf("Unable to get verification policy: %s", err.Error())
 	}
 	verificationPolicy, err := decodeVerificationPolicy([]byte(verificationPolicyString))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal verification policy: %s", err.Error())
+		return nil, logThenErrorf("Failed to unmarshal verification policy: %s", err.Error())
 	}
 	currentBestMatch := &common.Identifier{}
 	for _, identifier := range verificationPolicy.Identifiers {
@@ -148,5 +148,5 @@ func resolvePolicy(s *SmartContract, ctx contractapi.TransactionContextInterface
 		return currentBestMatch.Policy, nil
 	}
 
-	return nil, fmt.Errorf("Verification Policy Error: Failed to find verification policy matching view address: %s", viewAddress)
+	return nil, logThenErrorf("Verification Policy Error: Failed to find verification policy matching view address: %s", viewAddress)
 }

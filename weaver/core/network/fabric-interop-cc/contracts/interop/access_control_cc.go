@@ -25,9 +25,9 @@ const accessControlObjectType = "accessControl"
 func (s *SmartContract) CreateAccessControlPolicy(ctx contractapi.TransactionContextInterface, accessControlPolicyJSON string) error {
 	// Check if the caller has network admin privileges
 	if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-		return fmt.Errorf("Admin client check error: %s", err)
+		return logThenErrorf("Admin client check error: %s", err)
 	} else if !isAdmin {
-		return fmt.Errorf("Caller not a network admin; access denied")
+		return logThenErrorf("Caller not a network admin; access denied")
 	}
 
 	accessControlPolicy, err := decodeAccessControlPolicy([]byte(accessControlPolicyJSON))
@@ -61,9 +61,9 @@ func (s *SmartContract) CreateAccessControlPolicy(ctx contractapi.TransactionCon
 func (s *SmartContract) UpdateAccessControlPolicy(ctx contractapi.TransactionContextInterface, accessControlPolicyJSON string) error {
 	// Check if the caller has network admin privileges
 	if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-		return fmt.Errorf("Admin client check error: %s", err)
+		return logThenErrorf("Admin client check error: %s", err)
 	} else if !isAdmin {
-		return fmt.Errorf("Caller not a network admin; access denied")
+		return logThenErrorf("Caller not a network admin; access denied")
 	}
 
 	accessControlPolicy, err := decodeAccessControlPolicy([]byte(accessControlPolicyJSON))
@@ -112,9 +112,9 @@ func (s *SmartContract) GetAccessControlPolicyBySecurityDomain(ctx contractapi.T
 func (s *SmartContract) DeleteAccessControlPolicy(ctx contractapi.TransactionContextInterface, securityDomain string) error {
 	// Check if the caller has network admin privileges
 	if isAdmin, err := wutils.IsClientNetworkAdmin(ctx); err != nil {
-		return fmt.Errorf("Admin client check error: %s", err)
+		return logThenErrorf("Admin client check error: %s", err)
 	} else if !isAdmin {
-		return fmt.Errorf("Caller not a network admin; access denied")
+		return logThenErrorf("Caller not a network admin; access denied")
 	}
 
 	accessControlKey, err := ctx.GetStub().CreateCompositeKey(accessControlObjectType, []string{securityDomain})

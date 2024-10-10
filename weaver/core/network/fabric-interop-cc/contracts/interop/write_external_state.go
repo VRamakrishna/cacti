@@ -37,19 +37,19 @@ func ExtractAndValidateDataFromView(s *SmartContract, ctx contractapi.Transactio
 		var fabricViewData fabric.FabricView
 		err := protoV2.Unmarshal(view.Data, &fabricViewData)
 		if err != nil {
-			return nil, fmt.Errorf("FabricView Unmarshal error: %s", err)
+			return nil, logThenErrorf("FabricView Unmarshal error: %s", err)
 		}
 		interopPayloadList = make([]*common.InteropPayload, len(fabricViewData.EndorsedProposalResponses))
 		for i, endorsedProposalResponse := range fabricViewData.EndorsedProposalResponses {
 			var chaincodeAction peer.ChaincodeAction
 			err = proto.Unmarshal(endorsedProposalResponse.Payload.Extension, &chaincodeAction)
 			if err != nil {
-				return nil, fmt.Errorf("Unable to Unmarshal ChaincodeAction: %s", err.Error())
+				return nil, logThenErrorf("Unable to Unmarshal ChaincodeAction: %s", err.Error())
 			}
 			var interopPayload common.InteropPayload
 			err = protoV2.Unmarshal(chaincodeAction.Response.Payload, &interopPayload)
 			if err != nil {
-				return nil, fmt.Errorf("Unable to Unmarshal interopPayload: %s", err.Error())
+				return nil, logThenErrorf("Unable to Unmarshal interopPayload: %s", err.Error())
 			}
 			interopPayloadList[i] = &interopPayload
 		}
@@ -57,19 +57,19 @@ func ExtractAndValidateDataFromView(s *SmartContract, ctx contractapi.Transactio
 		var cordaViewData corda.ViewData
 		err := protoV2.Unmarshal(view.Data, &cordaViewData)
 		if err != nil {
-			return nil, fmt.Errorf("CordaView Unmarshal error: %s", err)
+			return nil, logThenErrorf("CordaView Unmarshal error: %s", err)
 		}
 		interopPayloadList = make([]*common.InteropPayload, len(cordaViewData.NotarizedPayloads))
 		for i, notarizedPayload := range cordaViewData.NotarizedPayloads {
 			var interopPayload common.InteropPayload
 			err = protoV2.Unmarshal(notarizedPayload.Payload, &interopPayload)
 			if err != nil {
-				return nil, fmt.Errorf("Unable to Unmarshal interopPayload: %s", err.Error())
+				return nil, logThenErrorf("Unable to Unmarshal interopPayload: %s", err.Error())
 			}
 			interopPayloadList[i] = &interopPayload
 		}
 	} else {
-		return nil, fmt.Errorf("Cannot extract data from view; unsupported DLT type: %+v", view.Meta.Protocol)
+		return nil, logThenErrorf("Cannot extract data from view; unsupported DLT type: %+v", view.Meta.Protocol)
 	}
 
 	var payloadConfidential bool
@@ -81,50 +81,50 @@ func ExtractAndValidateDataFromView(s *SmartContract, ctx contractapi.Transactio
 				// Unmarshal the (decrypted) confidential payload contents supplied by the caller
 				viewB64ContentBytes, err := base64.StdEncoding.DecodeString(b64ViewContentList[i])
 				if err != nil {
-					return nil, fmt.Errorf("Unable to base64 decode decrypted view content: %s", err.Error())
+					return nil, logThenErrorf("Unable to base64 decode decrypted view content: %s", err.Error())
 				}
 				var confidentialPayloadContents common.ConfidentialPayloadContents
 				err = protoV2.Unmarshal(viewB64ContentBytes, &confidentialPayloadContents)
 				if err != nil {
-					return nil, fmt.Errorf("ConfidentialPayloadContents Unmarshal error: %s", err)
+					return nil, logThenErrorf("ConfidentialPayloadContents Unmarshal error: %s", err)
 				}
 				var confidentialPayload common.ConfidentialPayload
 				err = protoV2.Unmarshal(interopPayload.Payload, &confidentialPayload)
 				if err != nil {
-					return nil, fmt.Errorf("ConfidentialPayload Unmarshal error: %s", err)
+					return nil, logThenErrorf("ConfidentialPayload Unmarshal error: %s", err)
 				}
 				if i == 0 {
 					if len(b64ViewContentList) != len(interopPayloadList) {
-						return nil, fmt.Errorf("Number of decrypted payloads (%d) does not match number of view contents (%d)", len(b64ViewContentList), len(interopPayloadList))
+						return nil, logThenErrorf("Number of decrypted payloads (%d) does not match number of view contents (%d)", len(b64ViewContentList), len(interopPayloadList))
 					}
 					payloadConfidential = true
 					viewPayload = confidentialPayloadContents.Payload
 				} else if !payloadConfidential {
-					return nil, fmt.Errorf("Mismatching confidentiality flags among interop payloads")
+					return nil, logThenErrorf("Mismatching confidentiality flags among interop payloads")
 				} else if !bytes.Equal(viewPayload, confidentialPayloadContents.Payload) {
-					return nil, fmt.Errorf("Mismatching payloads in proposal responses: 0 - %+v, %d - %+v", viewPayload, i, confidentialPayloadContents.Payload)
+					return nil, logThenErrorf("Mismatching payloads in proposal responses: 0 - %+v, %d - %+v", viewPayload, i, confidentialPayloadContents.Payload)
 				}
 				if confidentialPayload.HashType == common.ConfidentialPayload_HMAC {
 					payloadHMAC := hmac.New(sha256.New, confidentialPayloadContents.Random)
 					payloadHMAC.Write(confidentialPayloadContents.Payload)
 					payloadHMACBytes := payloadHMAC.Sum(nil)
 					if !bytes.Equal(confidentialPayload.Hash, payloadHMACBytes) {
-						return nil, fmt.Errorf("View payload hash does not match hash of data submitted by client")
+						return nil, logThenErrorf("View payload hash does not match hash of data submitted by client")
 					}
 				} else {
-					return nil, fmt.Errorf("Unsupported hash type in interop view payload: %+v", confidentialPayload.HashType)
+					return nil, logThenErrorf("Unsupported hash type in interop view payload: %+v", confidentialPayload.HashType)
 				}
 			} else if interopPayload.EncryptionInfo.Mechanism == common.EncryptionMechanism_DBE {
 				// Unmarshal the DBE payload contents supplied by the caller
 				var dbeConfidentialPayload common.DBEConfidentialPayload
 				err := protoV2.Unmarshal(interopPayload.Payload, &dbeConfidentialPayload)
 				if err != nil {
-					return nil, fmt.Errorf("DBEConfidentialPayload Unmarshal error: %s", err)
+					return nil, logThenErrorf("DBEConfidentialPayload Unmarshal error: %s", err)
 				}
 				// Decrypt the DBE-encrypted payload
 				secret, err := GetSecretKey(ctx)
 				if err != nil {
-					return nil, fmt.Errorf("Error retrieving DBE secret from PDC: %s", err)
+					return nil, logThenErrorf("Error retrieving DBE secret from PDC: %s", err)
 				}
 				dbeParamsAndVersionBytes64, err := s.GetDbeUpdatePublicParams(ctx)
 				if err != nil {
@@ -132,12 +132,12 @@ func ExtractAndValidateDataFromView(s *SmartContract, ctx contractapi.Transactio
 				}
 				dbeParamsAndVersionBytes, err := base64.StdEncoding.DecodeString(dbeParamsAndVersionBytes64)
 				if err != nil {
-					return nil, fmt.Errorf("Unable to base64 decode latest DBE SRS on ledger: %s", err.Error())
+					return nil, logThenErrorf("Unable to base64 decode latest DBE SRS on ledger: %s", err.Error())
 				}
 				var dbeParamsAndVersion common.DBEKey
 				err = protoV2.Unmarshal(dbeParamsAndVersionBytes, &dbeParamsAndVersion)
 				if err != nil {
-					return nil, fmt.Errorf("DBEKey Unmarshal error: %s", err)
+					return nil, logThenErrorf("DBEKey Unmarshal error: %s", err)
 				}
 				dbeParamsUpdateLocalVersion, err := GetDbeUpdateLocalVersion(ctx)
 				if err != nil {
@@ -145,27 +145,27 @@ func ExtractAndValidateDataFromView(s *SmartContract, ctx contractapi.Transactio
 				}
 				decryptedPayload, err := decryptDBEPayload(int(dbeParamsAndVersion.Version), dbeParamsUpdateLocalVersion, interopPayload.Payload, dbeParamsAndVersion.Srs, secret)
 				if err != nil {
-					return nil, fmt.Errorf("Error decrypting DBE-encrypted payload: %s", err)
+					return nil, logThenErrorf("Error decrypting DBE-encrypted payload: %s", err)
 				}
 				if i == 0 {
 					payloadConfidential = true
 					viewPayload = decryptedPayload
 				} else if !payloadConfidential {
-					return nil, fmt.Errorf("Mismatching confidentiality flags among interop payloads")
+					return nil, logThenErrorf("Mismatching confidentiality flags among interop payloads")
 				} else if !bytes.Equal(viewPayload, decryptedPayload) {
-					return nil, fmt.Errorf("Mismatching payloads in proposal responses: 0 - %+v, %d - %+v", viewPayload, i, decryptedPayload)
+					return nil, logThenErrorf("Mismatching payloads in proposal responses: 0 - %+v, %d - %+v", viewPayload, i, decryptedPayload)
 				}
 			} else {
-				return nil, fmt.Errorf("Unknown or unsupported encryption mechanism in interop payload: %+v", interopPayload.EncryptionInfo.Mechanism)
+				return nil, logThenErrorf("Unknown or unsupported encryption mechanism in interop payload: %+v", interopPayload.EncryptionInfo.Mechanism)
 			}
 		} else {
 			if i == 0 {
 				viewPayload = interopPayload.Payload
 				payloadConfidential = false
 			} else if payloadConfidential {
-				return nil, fmt.Errorf("Mismatching confidentiality flags among interop payloads")
+				return nil, logThenErrorf("Mismatching confidentiality flags among interop payloads")
 			} else if !bytes.Equal(viewPayload, interopPayload.Payload) {
-				return nil, fmt.Errorf("Mismatching payloads in proposal responses: 0 - %+v, %d - %+v", viewPayload, i, interopPayload.Payload)
+				return nil, logThenErrorf("Mismatching payloads in proposal responses: 0 - %+v, %d - %+v", viewPayload, i, interopPayload.Payload)
 			}
 		}
 	}
@@ -176,19 +176,19 @@ func ExtractAndValidateDataFromView(s *SmartContract, ctx contractapi.Transactio
 func (s *SmartContract) ParseAndValidateView(ctx contractapi.TransactionContextInterface, address, b64ViewProto string, b64ViewContentList []string) (string, error) {
 	viewB64Bytes, err := base64.StdEncoding.DecodeString(b64ViewProto)
 	if err != nil {
-		return "", fmt.Errorf("Unable to base64 decode data: %s", err.Error())
+		return "", logThenErrorf("Unable to base64 decode data: %s", err.Error())
 	}
 	var view common.View
 	err = protoV2.Unmarshal(viewB64Bytes, &view)
 	if err != nil {
-		return "", fmt.Errorf("View Unmarshal error: %s", err)
+		return "", logThenErrorf("View Unmarshal error: %s", err)
 	}
 
 	// 1. Verify proof
 	err = s.VerifyView(ctx, b64ViewProto, address)
 	if err != nil {
 		log.Errorf("Proof obtained from foreign network for query '%s' is INVALID", address)
-		return "", fmt.Errorf("VerifyView error: %s", err)
+		return "", logThenErrorf("VerifyView error: %s", err)
 	}
 
 	// 2. Extract response data for consumption by application chaincode
@@ -206,13 +206,13 @@ func (s *SmartContract) ParseAndValidateView(ctx contractapi.TransactionContextI
 // 2. Call application chaincode
 func (s *SmartContract) WriteExternalState(ctx contractapi.TransactionContextInterface, applicationID string, applicationChannel string, applicationFunction string, applicationArgs []string, argIndicesForSubstitution []int, addresses []string, b64ViewProtos []string, b64ViewContents [][]string) error {
 	if len(argIndicesForSubstitution) != len(addresses) {
-		return fmt.Errorf("Number of argument indices for substitution (%d) does not match number of addresses (%d)", len(argIndicesForSubstitution), len(addresses))
+		return logThenErrorf("Number of argument indices for substitution (%d) does not match number of addresses (%d)", len(argIndicesForSubstitution), len(addresses))
 	}
 	if len(addresses) != len(b64ViewProtos) {
-		return fmt.Errorf("Number of addresses (%d) does not match number of views (%d)", len(addresses), len(b64ViewProtos))
+		return logThenErrorf("Number of addresses (%d) does not match number of views (%d)", len(addresses), len(b64ViewProtos))
 	}
 	if len(addresses) != len(b64ViewContents) {
-		return fmt.Errorf("Number of addresses (%d) does not match number of view contents (%d)", len(addresses), len(b64ViewContents))
+		return logThenErrorf("Number of addresses (%d) does not match number of view contents (%d)", len(addresses), len(b64ViewContents))
 	}
 
 	arr := append([]string{applicationFunction}, applicationArgs...)
@@ -221,7 +221,7 @@ func (s *SmartContract) WriteExternalState(ctx contractapi.TransactionContextInt
 	for i, argIndex := range argIndicesForSubstitution {
 		// Validate argument index
 		if argIndex >= len(applicationArgs) {
-			return fmt.Errorf("Index %d out of bounds of array (length %d)", argIndex, len(applicationArgs))
+			return logThenErrorf("Index %d out of bounds of array (length %d)", argIndex, len(applicationArgs))
 		}
 		// Validate proof and extract view data
 		viewData, err := s.ParseAndValidateView(ctx, addresses[i], b64ViewProtos[i], b64ViewContents[i])
@@ -237,7 +237,7 @@ func (s *SmartContract) WriteExternalState(ctx contractapi.TransactionContextInt
 	log.Info(fmt.Sprintf("Calling invoke chaincode. AppId: %s, appChannel: %s", applicationID, applicationChannel))
 	pbResp := ctx.GetStub().InvokeChaincode(applicationID, byteArgs, applicationChannel)
 	if pbResp.Status != shim.OK {
-		return fmt.Errorf("Application chaincode invoke error: %s", string(pbResp.GetMessage()))
+		return logThenErrorf("Application chaincode invoke error: %s", string(pbResp.GetMessage()))
 	}
 	return nil
 }
@@ -250,21 +250,21 @@ func (s *SmartContract) WriteExternalState(ctx contractapi.TransactionContextInt
 func (s *SmartContract) VerifyView(ctx contractapi.TransactionContextInterface, b64ViewProto string, address string) error {
 	viewB64Bytes, err := base64.StdEncoding.DecodeString(b64ViewProto)
 	if err != nil {
-		return fmt.Errorf("Unable to base64 decode data: %s", err.Error())
+		return logThenErrorf("Unable to base64 decode data: %s", err.Error())
 	}
 	var view common.View
 	err = protoV2.Unmarshal(viewB64Bytes, &view)
 	if err != nil {
-		return fmt.Errorf("View Unmarshal error: %s", err)
+		return logThenErrorf("View Unmarshal error: %s", err)
 	}
 	addressStruct, err := parseAddress(address)
 	if err != nil {
-		return fmt.Errorf("Unable to parse address: %s", err.Error())
+		return logThenErrorf("Unable to parse address: %s", err.Error())
 	}
 	// Find the verification policy for the network and view.
 	verificationPolicy, err := resolvePolicy(s, ctx, addressStruct.LedgerSegment, addressStruct.ViewSegment)
 	if err != nil {
-		return fmt.Errorf("Unable to resolve verification policy: %s", err.Error())
+		return logThenErrorf("Unable to resolve verification policy: %s", err.Error())
 	}
 	switch view.Meta.Protocol {
 	case common.Meta_CORDA:
@@ -272,7 +272,7 @@ func (s *SmartContract) VerifyView(ctx contractapi.TransactionContextInterface, 
 		case "Notarization":
 			return verifyCordaNotarization(s, ctx, view.Data, verificationPolicy, addressStruct.LedgerSegment, address)
 		default:
-			return fmt.Errorf("Proof type not supported: %s", view.Meta.ProofType)
+			return logThenErrorf("Proof type not supported: %s", view.Meta.ProofType)
 		}
 	case common.Meta_FABRIC:
 		switch view.Meta.ProofType {
@@ -285,10 +285,10 @@ func (s *SmartContract) VerifyView(ctx contractapi.TransactionContextInterface, 
 				addressStruct.LedgerSegment,
 				address)
 		default:
-			return fmt.Errorf("Proof type not supported: %s", view.Meta.ProofType)
+			return logThenErrorf("Proof type not supported: %s", view.Meta.ProofType)
 		}
 	default:
-		return fmt.Errorf("Verification Error: Unrecognised protocol %s", view.Meta.Protocol)
+		return logThenErrorf("Verification Error: Unrecognised protocol %s", view.Meta.Protocol)
 	}
 
 	// TODO: Somewhere, we need to validate the requestor certificate and the nonce within the InteropPayload
@@ -308,7 +308,7 @@ func verifyCordaNotarization(s *SmartContract, ctx contractapi.TransactionContex
 	var cordaViewData corda.ViewData
 	err := protoV2.Unmarshal(data, &cordaViewData)
 	if err != nil {
-		return fmt.Errorf("Unable to decode corda view data: %s", err.Error())
+		return logThenErrorf("Unable to decode corda view data: %s", err.Error())
 	}
 
 	signerList := []string{}
@@ -316,7 +316,7 @@ func verifyCordaNotarization(s *SmartContract, ctx contractapi.TransactionContex
 	for i, value := range cordaViewData.NotarizedPayloads {
 		x509Cert, err := parseCert(value.Certificate)
 		if err != nil {
-			return fmt.Errorf("Unable to parse certificate: %s", err.Error())
+			return logThenErrorf("Unable to parse certificate: %s", err.Error())
 		}
 		if i == 0 {
 			viewPayload = value.Payload
@@ -325,25 +325,25 @@ func verifyCordaNotarization(s *SmartContract, ctx contractapi.TransactionContex
 		var interopPayload common.InteropPayload
 		err = protoV2.Unmarshal(value.Payload, &interopPayload)
 		if err != nil {
-			return fmt.Errorf("Unable to decode corda view data: %s", err.Error())
+			return logThenErrorf("Unable to decode corda view data: %s", err.Error())
 		}
 		if address != interopPayload.Address {
-			return fmt.Errorf("Address in response does not match original address: Original: %s Response: %s", address, interopPayload.Address)
+			return logThenErrorf("Address in response does not match original address: Original: %s Response: %s", address, interopPayload.Address)
 		}
 		// 3. Verify each of the signatures in the Notarization array according to the data bytes and certificate.
 		decodedSignature, err := base64.StdEncoding.DecodeString(value.Signature)
 		if err != nil {
-			return fmt.Errorf("Corda signature could not be decoded from base64: %s", err.Error())
+			return logThenErrorf("Corda signature could not be decoded from base64: %s", err.Error())
 		}
 		err = validateSignature(string(value.Payload), x509Cert, string(decodedSignature))
 		if err != nil {
-			return fmt.Errorf("Unable to Validate Signature: %s", err.Error())
+			return logThenErrorf("Unable to Validate Signature: %s", err.Error())
 		}
 		signerList = append(signerList, value.Id)
 		// 4. Check the certificates are valid according to the Membership.
 		err = verifyMemberInSecurityDomain(s, ctx, value.Certificate, securityDomain, value.Id)
 		if err != nil {
-			return fmt.Errorf("Verify membership failed. Certificate not valid: %s", err.Error())
+			return logThenErrorf("Verify membership failed. Certificate not valid: %s", err.Error())
 		}
 	}
 
@@ -351,7 +351,7 @@ func verifyCordaNotarization(s *SmartContract, ctx contractapi.TransactionContex
 	requiredSigners := verificationPolicy.Criteria
 	for _, signer := range requiredSigners {
 		if !Contains(signerList, signer) {
-			return fmt.Errorf("Notarizations missing signer: %s", signer)
+			return logThenErrorf("Notarizations missing signer: %s", signer)
 		}
 	}
 	log.Infof("Proof associated with response '%s' from Corda network for query '%s' is VALID", string(viewPayload), address)
@@ -373,7 +373,7 @@ func verifyFabricNotarization(s *SmartContract, ctx contractapi.TransactionConte
 	var fabricViewData fabric.FabricView
 	err := protoV2.Unmarshal(data, &fabricViewData)
 	if err != nil {
-		return fmt.Errorf("Unable to decode fabric view data: %s", err.Error())
+		return logThenErrorf("Unable to decode fabric view data: %s", err.Error())
 	}
 	signerList := []string{}
 	var viewPayload []byte
@@ -382,7 +382,7 @@ func verifyFabricNotarization(s *SmartContract, ctx contractapi.TransactionConte
 		var chaincodeAction peer.ChaincodeAction
 		err = proto.Unmarshal(endorsedProposalResponse.Payload.Extension, &chaincodeAction)
 		if err != nil {
-			return fmt.Errorf("Unable to Unmarshal ChaincodeAction: %s", err.Error())
+			return logThenErrorf("Unable to Unmarshal ChaincodeAction: %s", err.Error())
 		}
 		if i == 0 {
 			viewPayload = chaincodeAction.Response.Payload
@@ -390,34 +390,34 @@ func verifyFabricNotarization(s *SmartContract, ctx contractapi.TransactionConte
 		var interopPayload common.InteropPayload
 		err = protoV2.Unmarshal(chaincodeAction.Response.Payload, &interopPayload)
 		if err != nil {
-			return fmt.Errorf("Unable to Unmarshal interopPayload: %s", err.Error())
+			return logThenErrorf("Unable to Unmarshal interopPayload: %s", err.Error())
 		}
 		if address != interopPayload.Address {
-			return fmt.Errorf("Address in response does not match original address: Original: %s Response: %s", address, interopPayload.Address)
+			return logThenErrorf("Address in response does not match original address: Original: %s Response: %s", address, interopPayload.Address)
 		}
 
 		var serialisedIdentity msp.SerializedIdentity
 		err := proto.Unmarshal(endorsedProposalResponse.Endorsement.Endorser, &serialisedIdentity)
 		x509Cert, err := parseCert(string(serialisedIdentity.IdBytes))
 		if err != nil {
-			return fmt.Errorf("Unable to parse certificate: %s", err.Error())
+			return logThenErrorf("Unable to parse certificate: %s", err.Error())
 		}
 		proposalResponsePayloadBytes, err := proto.Marshal(endorsedProposalResponse.Payload)
 		if err != nil {
-			return fmt.Errorf("Unable to marshal proposal response payload: %s", err.Error())
+			return logThenErrorf("Unable to marshal proposal response payload: %s", err.Error())
 		}
 
 		// 3. Verify each of the endorser signatures in the ProposalResponse according to the response payload and certificate.
 		err = validateSignature(string(append(proposalResponsePayloadBytes, endorsedProposalResponse.Endorsement.Endorser...)), x509Cert, string(endorsedProposalResponse.Endorsement.Signature))
 		if err != nil {
-			return fmt.Errorf("Unable to Validate Signature: %s", err.Error())
+			return logThenErrorf("Unable to Validate Signature: %s", err.Error())
 		}
 
 		// 4. Check each of the endorser certificates matches the member's entry in the network's Membership.
 		org := serialisedIdentity.Mspid
 		err = verifyMemberInSecurityDomain(s, ctx, string(serialisedIdentity.IdBytes), securityDomain, org)
 		if err != nil {
-			return fmt.Errorf("Verify membership failed. Certificate not valid: %s", err.Error())
+			return logThenErrorf("Verify membership failed. Certificate not valid: %s", err.Error())
 		}
 		signerList = append(signerList, org)
 	}
@@ -425,7 +425,7 @@ func verifyFabricNotarization(s *SmartContract, ctx contractapi.TransactionConte
 	requiredSigners := verificationPolicy.Criteria
 	for _, signer := range requiredSigners {
 		if !Contains(signerList, signer) {
-			return fmt.Errorf("Notarizations missing signer: %s", signer)
+			return logThenErrorf("Notarizations missing signer: %s", signer)
 		}
 	}
 	log.Infof("Proof associated with response '%s' from Fabric network for query '%s' is VALID", string(viewPayload), address)
