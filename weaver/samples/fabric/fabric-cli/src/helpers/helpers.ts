@@ -14,6 +14,7 @@ import {
   query,
   InvocationSpec,
 } from "./fabric-functions";
+import { EncryptionMechanism } from "@hyperledger/cacti-weaver-protos-js/common/crypto_pb";
 import { AssetPledge } from "@hyperledger/cacti-weaver-protos-js/common/asset_transfer_pb";
 import { ConfidentialPayloadContents } from "@hyperledger/cacti-weaver-protos-js/common/interop_payload_pb";
 import { InteroperableHelper } from "@hyperledger/cacti-weaver-sdk-fabric";
@@ -960,6 +961,16 @@ const interopHelper = async (
   if (options["relay-tls-ca-files"]) {
     relayTlsCAFiles = options["relay-tls-ca-files"].split(":");
   }
+  let e2eFlag = false;
+  if (options["e2e-confidentiality"] && options["e2e-confidentiality"]!=="false") {
+    e2eFlag=true;
+  }
+  spinner.info(`E2EFlag ${e2eFlag}`);
+  let e2eMechanism = EncryptionMechanism.ECIES;
+  if (options["e2e-confidentiality"] === "dbe") {
+    e2eMechanism = EncryptionMechanism.DBE;
+  }
+  spinner.info(`E2EFlag ${e2eFlag}, mechanism: ${e2eMechanism}`);
   try {
     const invokeObject = {
       channel: netConfig.channelName,
@@ -987,7 +998,8 @@ const interopHelper = async (
       false,
       options["relay-tls"] === "true",
       relayTlsCAFiles,
-      options["e2e-confidentiality"] === "true",
+      e2eFlag,
+      e2eMechanism,
       gateway,
     );
     logger.info(

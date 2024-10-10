@@ -653,7 +653,7 @@ async function query(
   userString = "",
   registerUser = true,
 ): Promise<string> {
-  logger.debug("Running invoke on fabric network");
+  logger.debug("Running query on fabric network");
   try {
     logger.debug(
       `QUERY: ${JSON.stringify(invocationSpec)} connProfilePath: ${connProfilePath} networkName ${networkName} `,
@@ -695,6 +695,7 @@ async function invoke(
   logger: any = console,
   userString = "",
   registerUser = true,
+  endorsingOrgs: string[] = []
 ): Promise<string> {
   logger.debug("Running invoke on fabric network");
   try {
@@ -711,11 +712,18 @@ async function invoke(
     logger.debug(
       `CCFunc: ${invocationSpec.ccFunc} 'CCArgs: ${JSON.stringify(invocationSpec.args)}`,
     );
-    const read = await contract.submitTransaction(
-      invocationSpec.ccFunc,
-      ...invocationSpec.args,
+    const tx = contract.createTransaction(invocationSpec.ccFunc);
+    if (endorsingOrgs.length > 0) { 
+      tx.setEndorsingOrganizations(...endorsingOrgs);
+    }
+    const [result, submitError] = await handlePromise(
+      tx.submit(...invocationSpec.args),
     );
-    const state = Buffer.from(read).toString();
+    if (submitError) {
+      throw new Error(`submitTransaction Error: ${submitError}`);
+    }
+
+    const state = Buffer.from(result).toString();
     if (state) {
       logger.debug(`Response From Network: ${state}`);
     } else {

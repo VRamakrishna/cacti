@@ -76,7 +76,7 @@ const command: GluegunCommand = {
           {
             name: "--e2e-confidentiality",
             description:
-              "Flag indicating whether or not the view contents are confidential end-to-end across networks (client-to-interop-module).",
+              "Flag indicating whether or not the view contents are confidential end-to-end across networks (false|ecies|dbe)",
           },
           {
             name: "--debug",

@@ -25,8 +25,8 @@ const command: GluegunCommand = {
       commandHelp(
         print,
         toolbox,
-        `fabric-cli configure dbe validate --init|--update --target-network=<network1|network2> --user=<username>`,
-        `fabric-cli configure dbe validate --init --target-network=network1`,
+        `fabric-cli configure dbe validate --init|--update --target-network=<network1|network2> --org=<orgMspId> --user=<username>`,
+        `fabric-cli configure dbe validate --init --target-network=network1 --org=Org1MSP`,
         [],
         command,
         ["configure", "dbe", "validate"],
@@ -43,6 +43,10 @@ const command: GluegunCommand = {
     if (options["user"]) {
       userid = options["user"];
     }
+    let orgs = []
+    if (options["org"]) {
+        orgs = [options["org"]]
+    }
     
     let ccFunc = 'ValidateDbeInitVal'
     if (options['update']) {
@@ -54,7 +58,7 @@ const command: GluegunCommand = {
         ? process.env.DEFAULT_CHAINCODE
         : "interop";
 
-    const spinner = print.spin(`Invoking $ccFunc`);
+    const spinner = print.spin(`Invoking ${ccFunc}`);
 
     try {
       const result = await invoke(
@@ -70,6 +74,7 @@ const command: GluegunCommand = {
         logger,
         userid,
         false,
+        orgs
       );
       spinner.succeed(`Response from network: ${JSON.stringify(result)} `);
     } catch (err) {

@@ -578,6 +578,25 @@ const getPolicyCriteriaForAddress = async (
   }
 };
 
+const getDBEKeyBytesB64 = async (
+  contract: Contract,
+): Promise<null | any> => {
+  const [queryResponse, queryResponseError] = await helpers.handlePromise(
+    contract.evaluateTransaction(
+      "GetDbeUpdatePublicParams",
+    ),
+  );
+  if (queryResponseError) {
+    throw new Error(
+      `Error evaluating transaction GetDbeUpdatePublicParams ${queryResponseError}`,
+    );
+  }
+  if (!queryResponse || queryResponse.length === 0) {
+    throw new Error(`No DBE Key found on ledger`); 
+  }
+  return queryResponse;
+};
+
 /**
  * Verifies the view by using chaincode function in interop chaincode. Verification is based on verification policy of the network, proof type and protocol type.
  **/
@@ -658,6 +677,7 @@ const interopFlow = async (
   useTls: boolean = false,
   tlsRootCACertPaths?: Array<string>,
   confidential: boolean = false,
+  encryptionMechanism: cryptoPb.EncryptionMechanism = cryptoPb.EncryptionMechanism.ECIES,
   gateway: Gateway = null,
 ): Promise<{ views: Array<any>; result: any }> => {
   if (interopArgIndices.length !== interopJSONs.length) {
@@ -682,6 +702,7 @@ const interopFlow = async (
         useTls,
         tlsRootCACertPaths,
         confidential,
+        encryptionMechanism,
       ),
     );
     if (requestResponseError) {
@@ -694,7 +715,7 @@ const interopFlow = async (
       Buffer.from(requestResponse.view.serializeBinary()).toString("base64"),
     );
     computedAddresses.push(requestResponse.address);
-    if (confidential) {
+    if (confidential && encryptionMechanism === cryptoPb.EncryptionMechanism.ECIES) {
       const respData = getResponseDataFromView(
         requestResponse.view,
         keyCert.key.toBytes(),
@@ -841,6 +862,7 @@ const getRemoteView = async (
   useTls: boolean = false,
   tlsRootCACertPaths?: Array<string>,
   confidential: boolean = false,
+  encryptionMechanism: cryptoPb.EncryptionMechanism = cryptoPb.EncryptionMechanism.ECIES,
 ): Promise<{ view: any; address: any }> => {
   const {
     address,
@@ -874,6 +896,12 @@ const getRemoteView = async (
       `InteropFlow failed to get policy criteria: ${policyCriteriaError}`,
     );
   }
+ 
+  let encryptionKeyBytesBase64 = "";
+  if (encryptionMechanism === cryptoPb.EncryptionMechanism.DBE) {
+   encryptionKeyBytesBase64 = await getDBEKeyBytesB64(interopContract);
+  }
+
   const relay = useTls
     ? new Relay(localRelayEndpoint, true, tlsRootCACertPaths)
     : new Relay(localRelayEndpoint);
@@ -893,6 +921,8 @@ const getRemoteView = async (
       // Org is empty as the name is in the certs for
       org,
       confidential,
+      encryptionMechanism,
+      encryptionKeyBytesBase64,
     ),
   );
   if (relayResponseError) {

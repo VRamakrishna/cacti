@@ -25,8 +25,8 @@ const command: GluegunCommand = {
       commandHelp(
         print,
         toolbox,
-        `fabric-cli configure dbe update --target-network=<network1|network2> --entity-id=<orgId> --user=<username>`,
-        `fabric-cli configure dbe update --target-network=network1 --entity-id=1`,
+        `fabric-cli configure dbe update --target-network=<network1|network2> --org1=<orgMspId> --entity-id=<orgId> --user=<username>`,
+        `fabric-cli configure dbe update --target-network=network1 --org=Org1MSP --entity-id=1`,
         [],
         command,
         ["configure", "dbe", "update"],
@@ -47,6 +47,11 @@ const command: GluegunCommand = {
     let userid = "user1";
     if (options["user"]) {
       userid = options["user"];
+    }
+
+    let org = "Org1MSP"
+    if (options["org"]) {
+        org = options["org"]
     }
 
     const netConfig = getNetworkConfig(options["target-network"]);
@@ -70,6 +75,7 @@ const command: GluegunCommand = {
         logger,
         userid,
         false,
+        [org],
       );
       spinner.succeed(`Response from network: ${JSON.stringify(result)} `);
     } catch (err) {

@@ -374,7 +374,7 @@ func (s *SmartContract) ValidateDbeUpdateVal(ctx contractapi.TransactionContextI
 	if err != nil {
 		return err
 	}
-	if updateRequestBytes == nil || len(updateRequestBytes) != 0 {
+	if updateRequestBytes == nil || len(updateRequestBytes) == 0 {
 		return fmt.Errorf("Invalid ledger state. UpdateRequest not recorded for latest entity Id %d.", latestEntityId)
 	}
 
@@ -495,7 +495,7 @@ func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionCont
 	if err != nil {
 		return "", err
 	}
-	if updateRequestBytes == nil || len(updateRequestBytes) != 0 {
+	if updateRequestBytes == nil || len(updateRequestBytes) == 0 {
 		return "", fmt.Errorf("Invalid ledger state. UpdateRequest not recorded for latest entity Id %d.", latestEntityId)
 	}
 

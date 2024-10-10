@@ -184,7 +184,11 @@ func handleRequest(s *SmartContract, ctx contractapi.TransactionContextInterface
 				query.EncryptionInfo.Key = []byte(query.Certificate)
 			} else if query.EncryptionInfo.Mechanism == common.EncryptionMechanism_DBE {
 				var dbeEncryptionSRS common.DBEKey
-				err = protoV2.Unmarshal(query.EncryptionInfo.Key, &dbeEncryptionSRS)
+				dbeKeyBytes, err := base64.StdEncoding.DecodeString(string(query.EncryptionInfo.Key))
+				if err != nil {
+					return "", logThenErrorf("Unable to decode base64 query encryption key: %s", err.Error())
+				}
+				err = protoV2.Unmarshal(dbeKeyBytes, &dbeEncryptionSRS)
 				if err != nil {
 					return "", logThenErrorf("Unable to unmarshal query encryption key: %s", err.Error())
 				}
