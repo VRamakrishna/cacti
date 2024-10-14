@@ -10,7 +10,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 	"github.com/hyperledger/cacti/weaver/common/protos-go/v2/common"

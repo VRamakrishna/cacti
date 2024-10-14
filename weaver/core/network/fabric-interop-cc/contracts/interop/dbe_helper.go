@@ -10,9 +10,10 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
+	"os"
 	"strconv"
 
+	//"github.com/hyperledger/fabric-chaincode-go/pkg/statebased"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 	"github.com/hyperledger/cacti/weaver/common/protos-go/v2/common"
@@ -33,7 +34,10 @@ const dbeUpdateSRSLatestEntityIdKey = "srsupdatelatestentityid"
 const dbeSRSProposed = "PROPOSED"
 const dbeSRSValidated = "VALIDATED"
 
-// getCollectionName is an internal helper function to get collection of submitting client identity.
+const dbeSecretFileName = "/home/chaincode/secret.dbe"
+const dbeLocalOrgVersionFileName = "/home/chaincode/version.dbe"
+
+/*// getCollectionName is an internal helper function to get collection of submitting client identity.
 func getCollectionName(ctx contractapi.TransactionContextInterface) (string, error) {
 
 	// Get the MSP ID of the org to which this peer belongs
@@ -61,6 +65,42 @@ func recordSecretInPrivateCollection(ctx contractapi.TransactionContextInterface
 	err = ctx.GetStub().PutPrivateData(orgCollection, secretKey, secretBytes)
 	if err != nil {
 		return logThenErrorf("Failed to store secret for key %s in collection %s: %v", secretKey, orgCollection, err)
+	}
+
+	// Update the secret key state (in PDC) endorsement policy to require only the corresponding org's endorsement
+	ep, err := statebased.NewStateEP(nil)
+	if err != nil {
+		return logThenErrorf("%v", err)
+	}
+	orgMSPID, err := shim.GetMSPID()
+	if err != nil {
+		return logThenErrorf("%v", err)
+	}
+	err = ep.AddOrgs(statebased.RoleTypeMember, []string{orgMSPID}...)
+	if err != nil {
+		return logThenErrorf("%v", err)
+	}
+	policy, err := ep.Policy()
+	if err != nil {
+		return logThenErrorf("%v", err)
+	}
+	err = ctx.GetStub().SetPrivateDataValidationParameter(orgCollection, secretKey, policy)
+	if err != nil {
+		return logThenErrorf("Failed to update endorsement policy for collection %s, secret key %s: %v", orgCollection, secretKey, err)
+	}
+	return nil
+}*/
+
+func recordSecretInFile(secretBytes []byte) error {
+
+	log.Printf("Write secret: filename %s, value %s", dbeSecretFileName, string(secretBytes))
+	_, err := os.Create(dbeSecretFileName)
+	if err != nil {
+		return logThenErrorf("Failed to create file %s to store secret key %s: %v", dbeSecretFileName, string(secretBytes), err)
+	}
+	err = os.WriteFile(dbeSecretFileName, secretBytes, 0644)
+	if err != nil {
+		return logThenErrorf("Failed to store secret %s in file %s: %v", string(secretBytes), dbeSecretFileName, err)
 	}
 	return nil
 }
@@ -291,7 +331,9 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 	}
 
 	// Record 'secret' in this peer's org's PDC
-	err = recordSecretInPrivateCollection(ctx, secretBytes)
+	//err = recordSecretInPrivateCollection(ctx, secretBytes)
+	// Record 'secret' on the filesystem
+	err = recordSecretInFile(secretBytes)
 	if err != nil {
 		return err
 	}
@@ -327,6 +369,14 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 	err = ctx.GetStub().PutState(updateRequestOrgPresenceKey, []byte(entityIdStr))
 	if err != nil {
 		return err
+	}
+	_, err = os.Create(dbeLocalOrgVersionFileName)
+	if err != nil {
+		return logThenErrorf("Failed to create file %s to store local Org version: %v", dbeLocalOrgVersionFileName, err)
+	}
+	err = os.WriteFile(dbeLocalOrgVersionFileName, []byte(entityIdStr), 0644)
+	if err != nil {
+		return logThenErrorf("Failed to store local org version in file %s: %v", dbeLocalOrgVersionFileName, err)
 	}
 	updateRequestOrgKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeUpdateSRSOrgKey, entityIdStr})
 	if err != nil {
@@ -557,7 +607,7 @@ func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionCont
 // Read my org's version number as set in this protocol (i.e., in what position in the sequence did I submit an UpdateRequest)
 func GetDbeUpdateLocalVersion(ctx contractapi.TransactionContextInterface) (int, error) {
 	// Get my org MSP ID
-	orgMSPID, err := shim.GetMSPID()
+	/*orgMSPID, err := shim.GetMSPID()
 	if err != nil {
 		return 0, logThenErrorf("Failed to get peer's Org MSPID: %+v", err)
 	}
@@ -569,6 +619,10 @@ func GetDbeUpdateLocalVersion(ctx contractapi.TransactionContextInterface) (int,
 	updateRequestOrgPresenceBytes, err := ctx.GetStub().GetState(updateRequestOrgPresenceKey)
 	if err != nil {
 		return 0, err
+	}*/
+	updateRequestOrgPresenceBytes, err := os.ReadFile(dbeLocalOrgVersionFileName)
+	if err != nil {
+		return 0, logThenErrorf("Failed to fetch local Org version from file %s: %v", dbeLocalOrgVersionFileName, err)
 	}
 	entityId, err := strconv.Atoi(string(updateRequestOrgPresenceBytes))
 	if err != nil {
@@ -579,7 +633,7 @@ func GetDbeUpdateLocalVersion(ctx contractapi.TransactionContextInterface) (int,
 
 // Function: Read secret key from PDC
 func GetSecretKey(ctx contractapi.TransactionContextInterface) (*math.Zr, error) {
-	// Get collection name for my organization.
+	/*// Get collection name for my organization.
 	orgCollection, err := getCollectionName(ctx)
 	if err != nil {
 		return nil, logThenErrorf("Failed to infer private collection name for the org: %v", err)
@@ -588,10 +642,14 @@ func GetSecretKey(ctx contractapi.TransactionContextInterface) (*math.Zr, error)
 	// Read the serialized secret key from the collection (see func recordSecretInPrivateCollection for the write counterpart)
 	secretKey, err := ctx.GetStub().CreateCompositeKey(dbeObjectKey, []string{dbeSecretKey})
 	secretBytes, err := ctx.GetStub().GetPrivateData(orgCollection, secretKey)
+	log.Printf("Get: collection %s, key %s, value %s", orgCollection, secretKey, string(secretBytes))*/
+
+	// Read the serialized secret key from the file system (see func recordSecretInFile for the write counterpart)
+	secretBytes, err := os.ReadFile(dbeSecretFileName)
 	if err != nil {
-		return nil, logThenErrorf("Failed to fetch secret for key %s from collection %s: %v", secretKey, orgCollection, err)
+		return nil, logThenErrorf("Failed to fetch secret from file %s: %v", dbeSecretFileName, err)
 	}
-	log.Printf("Get: collection %s, key %s, value %s", orgCollection, secretKey, string(secretBytes))
+	log.Printf("Read secret from file: file name %s, value %s", dbeSecretFileName, string(secretBytes))
 
 	// Unmarshal the secret key byte array using func unmarshalDBESecret and return it
 	secret, err := unmarshalDBESecret(secretBytes)

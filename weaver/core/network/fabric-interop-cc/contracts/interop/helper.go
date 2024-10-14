@@ -9,6 +9,7 @@ package main
 
 import (
     "fmt"
+    "errors"
     "strings"
     log "github.com/sirupsen/logrus"
 )

@@ -15,7 +15,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"strings"
-	"fmt"
 
 	"github.com/hyperledger/cacti/weaver/common/protos-go/v2/common"
 	"github.com/hyperledger/cacti/weaver/common/protos-go/v2/identity"
