@@ -11,11 +11,12 @@
 #P_ADD="$1"
 
 export NW_NAME="$3"
+export NUM_ORGS="$4"
 export CORE_PEER_TLS_ENABLED=true
 export ORDERER_CA=$NW_PATH/ordererOrganizations/${NW_NAME}.com/orderers/orderer.${NW_NAME}.com/msp/tlscacerts/tlsca.${NW_NAME}.com-cert.pem
-export PEER0_ORG1_CA=$NW_PATH/peerOrganizations/org1.${NW_NAME}.com/peers/peer0.org1.${NW_NAME}.com/tls/ca.crt
-export PEER0_ORG2_CA=$NW_PATH/peerOrganizations/org2.${NW_NAME}.com/peers/peer0.org2.${NW_NAME}.com/tls/ca.crt
-#export PEER0_ORG3_CA=${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt
+for ii in $(seq 1 ${NUM_ORGS}); do
+    export "PEER0_ORG${ii}_CA"=$NW_PATH/peerOrganizations/org${ii}.${NW_NAME}.com/peers/peer0.org${ii}.${NW_NAME}.com/tls/ca.crt
+done
 
 # Set OrdererOrg.Admin globals
 setOrdererGlobals() {
@@ -33,20 +34,11 @@ setGlobals() {
     USING_ORG="${OVERRIDE_ORG}"
   fi
   echo "Using organization ${USING_ORG}  NW - $3"
-  if [ $USING_ORG -eq 1 ]; then
-    export CORE_PEER_LOCALMSPID="Org1MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG1_CA
-    export CORE_PEER_MSPCONFIGPATH=$NW_PATH/peerOrganizations/org1."$3".com/users/Admin@org1."$3".com/msp
-    export CORE_PEER_ADDRESS="localhost:"${2}
-  elif [ $USING_ORG -eq 2 ]; then
-    export CORE_PEER_LOCALMSPID="Org2MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
-    export CORE_PEER_MSPCONFIGPATH=$NW_PATH/peerOrganizations/org2."$3".com/users/Admin@org2."$3".com/msp
-    export CORE_PEER_ADDRESS="localhost:"${2}
-  else
-    echo "================== ERROR !!! ORG Unknown =================="
-    exit 1
-  fi
+  export CORE_PEER_LOCALMSPID="Org${USING_ORG}MSP"
+  ca_path=$(bash -c "echo \$PEER0_ORG${USING_ORG}_CA")
+  export CORE_PEER_TLS_ROOTCERT_FILE=$ca_path
+  export CORE_PEER_MSPCONFIGPATH=$NW_PATH/peerOrganizations/org"${USING_ORG}"."$3".com/users/Admin@org"${USING_ORG}"."$3".com/msp
+  export CORE_PEER_ADDRESS="localhost:"${2}
 
   if [ "$VERBOSE" == "true" ]; then
     env | grep CORE

@@ -12,14 +12,13 @@ MAX_RETRY="$5"
 VERBOSE="$6"
 CC_CHAIN_CODE="$7"
 NW_PATH="$8"
-ORG1_P="$9"
-ORG2_P="${10}"
-ORD_P=${11}
-APP_R=${12}
-NW_NAME=${13}
-PROFILE="${14}"
-TX_MODE="${15}"
-TX_TARGET_ORG="${16}"
+NUM_ORGS="$9"
+ORD_P=${10}
+APP_R=${11}
+NW_NAME=${12}
+PROFILE="${13}"
+TX_MODE="${14}"
+TX_TARGET_ORG="${15}"
 
 : ${CHANNEL_NAME:="mychannel"}
 : ${CC_SRC_LANGUAGE:="golang"}
@@ -32,14 +31,23 @@ CC_SRC_LANGUAGE=`echo "$CC_SRC_LANGUAGE" | tr [:upper:] [:lower:]`
 CC_CHAIN_CODE=`echo "$CC_CHAIN_CODE" | tr [:upper:] [:lower:]`
 
 CC_END_POLICY="--signature-policy AND('Org1MSP.member')"
-if [ "$PROFILE" = "2-nodes" ]; then
+if [ "$PROFILE" != "1-node" ]; then
+	OrgsMSPMembers="("
+	for ii in $(seq 1 ${NUM_ORGS}); do
+		OrgsMSPMembers+="'Org${ii}MSP.member'"
+		if [ $ii -ne $NUM_ORGS ]; then
+			OrgsMSPMembers+=","
+		fi
+	done
+	OrgsMSPMembers+=")"
+
 	echo "Chaincode = "$CC_CHAIN_CODE
 	if [ "$CC_CHAIN_CODE" = "interop" -o "$CC_CHAIN_CODE" = "privateassettransfer" ]; then
 		echo "In OR"
-		CC_END_POLICY="--signature-policy OR('Org1MSP.member','Org2MSP.member')"
+		CC_END_POLICY="--signature-policy OR${OrgsMSPMembers}"
 	else
 		echo "In AND"
-		CC_END_POLICY="--signature-policy AND('Org1MSP.member','Org2MSP.member')"
+		CC_END_POLICY="--signature-policy AND${OrgsMSPMembers}"
 	fi
 fi
 echo "Endorsement policy = "$CC_END_POLICY
@@ -51,7 +59,7 @@ echo " - MAX_RETRY              :      ${MAX_RETRY}"
 echo " - VERBOSE                :      ${VERBOSE}"
 echo " - CC_CHAIN_CODE          :      ${CC_CHAIN_CODE}"
 echo " - NW_PATH                :      ${NW_PATH}"
-echo " - PEER_ADD               :      ${ORG1_P}"
+echo " - NUM_ORGS               :      ${NUM_ORGS}"
 echo " - ORD_PORT               :      ${ORD_P}"
 echo " - APP_ROOT               :      ${APP_R}"
 echo " - NW_NAME                :      ${NW_NAME}"
@@ -98,7 +106,7 @@ else
 fi
 
 # import utils
-. scripts/envVar.sh $NW_PATH $ORG1_P $NW_NAME
+. scripts/envVar.sh $NW_PATH $PEER_ORG1_PORT $NW_NAME $NUM_ORGS
 
 
 chaincodeInvokeInit() {
@@ -179,32 +187,24 @@ chaincodeQuery() {
 	fi
 }
 
+# Create list of args required for parsePeerConnectionParameters for all orgs
+PEER_ORGS_NW_LIST=()
+for ii in $(seq 1 ${NUM_ORGS}); do
+  PEER_ORG_PORT=$(bash -c "echo \$PEER_ORG${ii}_PORT")
+	PEER_ORGS_NW_LIST+=(${ii} ${PEER_ORG_PORT} ${NW_NAME})
+done
+
 if [ "$TX_MODE" = "init" ]; then
 	# Initialize the chaincode
-	if [ "$PROFILE" = "2-nodes" ]; then
-		chaincodeInvokeInit 1 $ORG1_P $NW_NAME 2 $ORG2_P $NW_NAME
-	else
-		chaincodeInvokeInit 1 $ORG1_P $NW_NAME
-	fi
+	chaincodeInvokeInit ${PEER_ORGS_NW_LIST[@]}
 elif [ "$TX_MODE" = "invoke" ]; then
 	# Invoke the chaincode
-	if [ "$TX_TARGET_ORG" = "1" ]; then
-		chaincodeInvoke 1 $ORG1_P $NW_NAME
-	else
-		chaincodeInvoke 2 $ORG2_P $NW_NAME
-	fi
+	PEER_ORG_PORT=$(bash -c "echo \$PEER_ORG${TX_TARGET_ORG}_PORT")
+	chaincodeInvoke $TX_TARGET_ORG $PEER_ORG_PORT $NW_NAME
 elif [ "$TX_MODE" = "query" ]; then
 	# Query chaincode on specific peer
-	if [ "$TX_TARGET_ORG" = "1" ]; then
-		echo "Querying chaincode on peer0.org1..."
-		chaincodeQuery 1 $ORG1_P $NW_NAME
-	elif [ "$TX_TARGET_ORG" = "2" ]; then
-		echo "Querying chaincode on peer0.org1..."
-		chaincodeQuery 2 $ORG2_P $NW_NAME
-	else
-		echo "Invalid org number: "$TX_TARGET_ORG
-		exit 1
-	fi
+	PEER_ORG_PORT=$(bash -c "echo \$PEER_ORG${TX_TARGET_ORG}_PORT")
+	chaincodeQuery $TX_TARGET_ORG $PEER_ORG_PORT $NW_NAME
 else
 	echo "Unknown transaction mode: "$TX_MODE
 	exit 1

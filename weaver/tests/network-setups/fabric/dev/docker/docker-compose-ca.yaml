@@ -26,7 +26,7 @@ services:
       - net
 
   ca_org2:
-    profiles: ["2-nodes"]
+    profiles: ["2-nodes", "3-nodes", "4-nodes", "5-nodes"]
     image: hyperledger/fabric-ca:${CA_IMAGE_TAG}
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
@@ -39,6 +39,57 @@ services:
     volumes:
       - ${NW_CFG_PATH}/fabric-ca/org2:/etc/hyperledger/fabric-ca-server
     container_name: ca.org2.${COMPOSE_PROJECT_NAME}.com
+    networks:
+      - net
+
+  ca_org3:
+    profiles: ["3-nodes", "4-nodes", "5-nodes"]
+    image: hyperledger/fabric-ca:${CA_IMAGE_TAG}
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.org3.${COMPOSE_PROJECT_NAME}.com
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=$CA_ORG3_PORT
+    ports:
+      - "${CA_ORG3_PORT}:${CA_ORG3_PORT}"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ${NW_CFG_PATH}/fabric-ca/org3:/etc/hyperledger/fabric-ca-server
+    container_name: ca.org3.${COMPOSE_PROJECT_NAME}.com
+    networks:
+      - net
+
+  ca_org4:
+    profiles: ["4-nodes", "5-nodes"]
+    image: hyperledger/fabric-ca:${CA_IMAGE_TAG}
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.org4.${COMPOSE_PROJECT_NAME}.com
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=$CA_ORG4_PORT
+    ports:
+      - "${CA_ORG4_PORT}:${CA_ORG4_PORT}"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ${NW_CFG_PATH}/fabric-ca/org4:/etc/hyperledger/fabric-ca-server
+    container_name: ca.org4.${COMPOSE_PROJECT_NAME}.com
+    networks:
+      - net
+
+  ca_org5:
+    profiles: ["5-nodes"]
+    image: hyperledger/fabric-ca:${CA_IMAGE_TAG}
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.org5.${COMPOSE_PROJECT_NAME}.com
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=$CA_ORG5_PORT
+    ports:
+      - "${CA_ORG5_PORT}:${CA_ORG5_PORT}"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ${NW_CFG_PATH}/fabric-ca/org5:/etc/hyperledger/fabric-ca-server
+    container_name: ca.org5.${COMPOSE_PROJECT_NAME}.com
     networks:
       - net
 

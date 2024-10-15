@@ -6,13 +6,13 @@
 
 
 CHANNEL_NAME="$1"
-DELAY="$2"
-MAX_RETRY="$3"
-VERBOSE="$4"
-NW_PATH="$5"
-ORDERER_PORT="$6"
-PEER_ORG1_PORT="$7"
-PEER_ORG2_PORT="$8"
+CHANNEL_PROFILE_ARG="$2"
+DELAY="$3"
+MAX_RETRY="$4"
+VERBOSE="$5"
+NW_PATH="$6"
+ORDERER_PORT="$7"
+NUM_ORGS="$8"
 NW_NAME="$9"
 PROFILE="${10}"
 
@@ -22,7 +22,7 @@ PROFILE="${10}"
 : ${VERBOSE:="false"}
 
 # import utils
-. scripts/envVar.sh $NW_PATH $PEER_ORG1_PORT $NW_NAME
+. scripts/envVar.sh $NW_PATH $PEER_ORG1_PORT $NW_NAME $NUM_ORGS
 
 
 if [ ! -d "$NW_PATH/channel-artifacts" ]; then
@@ -46,9 +46,10 @@ createChannelTx() {
 }
 
 createAnchorPeerTx() {
-    ORGMSPS=$1
+    NUM_ORGS=$1
     CHANNEL_PROFILE=$2
-    for orgmsp in $ORGMSPS ; do
+    for orgId in $(seq 1 ${NUM_ORGS}); do
+        orgmsp="Org${orgId}MSP"
         echo "#######    Generating anchor peer update for ${orgmsp}  ##########"
         set -x
         configtxgen -profile $CHANNEL_PROFILE -outputAnchorPeersUpdate $NW_PATH/channel-artifacts/${orgmsp}anchors.tx -channelID $CHANNEL_NAME -asOrg ${orgmsp}
@@ -142,19 +143,11 @@ echo "Fabric Config path :"$FABRIC_CFG_PATH
 
 ## Create channeltx
 echo "### Generating channel configuration transaction '${CHANNEL_NAME}.tx' ###"
-if [ "$PROFILE" = "2-nodes" ]; then
-    createChannelTx "TwoOrgsChannel"
-else
-    createChannelTx "OneOrgChannel"
-fi 
+createChannelTx $CHANNEL_PROFILE_ARG
 
 ## Create anchorpeertx
 echo "### Generating channel configuration transaction '${CHANNEL_NAME}.tx' ###"
-if [ "$PROFILE" = "2-nodes" ]; then
-    createAnchorPeerTx "Org1MSP Org2MSP" "TwoOrgsChannel"
-else
-    createAnchorPeerTx "Org1MSP" "OneOrgChannel"
-fi
+createAnchorPeerTx $NUM_ORGS $CHANNEL_PROFILE_ARG
 
 FABRIC_CFG_PATH=$NW_PATH/config/
 echo "Fabric Config path for channel creation: "$FABRIC_CFG_PATH
@@ -164,20 +157,18 @@ echo "Creating channel "$CHANNEL_NAME
 createChannel
 
 ## Join all the peers to the channel
-echo "Join Org1 peers to the channel ..."
-joinChannel 1 $PEER_ORG1_PORT
-if [ "$PROFILE" = "2-nodes" ]; then
-    echo "Join Org2 peers to the channel..."
-    joinChannel 2 $PEER_ORG2_PORT
-fi
+for ii in $(seq 1 ${NUM_ORGS}); do
+    PEER_ORG_PORT=$(bash -c "echo \$PEER_ORG${ii}_PORT")
+    echo "Join Org${ii} peers to the channel..."
+    joinChannel ${ii} $PEER_ORG_PORT
+done
 
 ## Set the anchor peers for each org in the channel
-echo "Updating anchor peers for org1."
-updateAnchorPeers 1 $PEER_ORG1_PORT
-if [ "$PROFILE" = "2-nodes" ]; then
-    echo "Updating anchor peers for org2..."
-    updateAnchorPeers 2 $PEER_ORG2_PORT
-fi
+for ii in $(seq 1 ${NUM_ORGS}); do
+    PEER_ORG_PORT=$(bash -c "echo \$PEER_ORG${ii}_PORT")
+    echo "Updating anchor peers for Org${ii}..."
+    updateAnchorPeers ${ii} $PEER_ORG_PORT
+done
 
 echo "========= Channel successfully joined =========== "
 

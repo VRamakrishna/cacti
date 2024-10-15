@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 echo $1
+NUM_ORGS=$2
 
 function one_line_pem {
     echo "`awk 'NF {sub(/\\n/, ""); printf "%s\\\\\\\n",$0;}' $1`"
@@ -35,26 +36,17 @@ function yaml_ccp {
         $8/ccp-template.yaml | sed -e $'s/\\\\n/\\\n        /g'
 }
 
-ORDERER_PORT=9050
-ORDERER_PEM=$1/ordererOrganizations/network2.com/msp/tlscacerts/tlsca.network2.com-cert.pem
-ORG=1
-P0PORT=9051
-CAPORT=5054
-PEERPEM=$1/peerOrganizations/org1.network2.com/tlsca/tlsca.org1.network2.com-cert.pem
-CAPEM=$1/peerOrganizations/org1.network2.com/ca/ca.org1.network2.com-cert.pem
+for ii in $(seq 1 ${NUM_ORGS}); do
+    ORDERER_PORT=9050
+    ORDERER_PEM=$1/ordererOrganizations/network2.com/msp/tlscacerts/tlsca.network2.com-cert.pem
+    ORG=${ii}
+    P0PORT=$(bash -c "echo \$N2_PEER_ORG${ii}_PORT")
+    CAPORT=$(bash -c "echo \$N2_CA_ORG${ii}_PORT")
+    PEERPEM=$1/peerOrganizations/org${ii}.network2.com/tlsca/tlsca.org${ii}.network2.com-cert.pem
+    CAPEM=$1/peerOrganizations/org${ii}.network2.com/ca/ca.org${ii}.network2.com-cert.pem
 
-echo "$(json_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $1)" > $1/peerOrganizations/org1.network2.com/connection-org1.json
-echo "$(yaml_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $ORDERER_PORT $ORDERER_PEM $1)" > $1/peerOrganizations/org1.network2.com/connection-org1.yaml
-echo "PEER PEM:" $PEERPEM
-echo "CA PEM:" $CAPEM
-
-ORG=2
-P0PORT=9061
-CAPORT=5064
-PEERPEM=$1/peerOrganizations/org2.network2.com/tlsca/tlsca.org2.network2.com-cert.pem
-CAPEM=$1/peerOrganizations/org2.network2.com/ca/ca.org2.network2.com-cert.pem
-
-echo "$(json_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $1)" > $1/peerOrganizations/org2.network2.com/connection-org2.json
-echo "$(yaml_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $ORDERER_PORT $ORDERER_PEM $1)" > $1/peerOrganizations/org2.network2.com/connection-org2.yaml
-echo "PEER PEM:" $PEERPEM
-echo "CA PEM:" $CAPEM
+    echo "$(json_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $1)" > $1/peerOrganizations/org${ii}.network2.com/connection-org${ii}.json
+    echo "$(yaml_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $ORDERER_PORT $ORDERER_PEM $1)" > $1/peerOrganizations/org${ii}.network2.com/connection-org${ii}.yaml
+    echo "PEER PEM:" $PEERPEM
+    echo "CA PEM:" $CAPEM
+done

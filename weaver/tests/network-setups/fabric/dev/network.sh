@@ -185,32 +185,21 @@ function createOrgs() {
     echo "##### Generate certificates using cryptogen tool #########"
     echo "##########################################################"
     echo
+    
+    for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+        echo "##########################################################"
+        echo "############ Create Org${ii} Identities ######################"
+        echo "##########################################################"
 
-    echo "##########################################################"
-    echo "############ Create Org1 Identities ######################"
-    echo "##########################################################"
-
-    set -x
-    cryptogen generate --config=$NW_CFG_PATH/cryptogen/crypto-config-org1.yaml --output="$NW_CFG_PATH"
-    res=$?
-    set +x
-    if [ $res -ne 0 ]; then
-      echo "Failed to generate certificates..."
-      exit 1
-    fi
-
-    echo "##########################################################"
-    echo "############ Create Org2 Identities ######################"
-    echo "##########################################################"
-
-    set -x
-    cryptogen generate --config=$NW_CFG_PATH/cryptogen/crypto-config-org2.yaml --output="$NW_CFG_PATH"
-    res=$?
-    set +x
-    if [ $res -ne 0 ]; then
-     echo "Failed to generate certificates..."
-     exit 1
-    fi
+        set -x
+        cryptogen generate --config=$NW_CFG_PATH/cryptogen/crypto-config-org${ii}.yaml --output="$NW_CFG_PATH"
+        res=$?
+        set +x
+        if [ $res -ne 0 ]; then
+          echo "Failed to generate certificates..."
+          exit 1
+        fi
+    done
 
     echo "##########################################################"
     echo "############ Create Orderer Org Identities ###############"
@@ -259,18 +248,14 @@ function createOrgs() {
     . $NW_CFG_PATH/fabric-ca/registerEnroll.sh
 
     sleep 10
-
-    echo "##########################################################"
-    echo "############ Create Org1 Identities ######################"
-    echo "##########################################################"
-
-    createOrg1 $NW_CFG_PATH $CA_ORG1_PORT
-
-    echo "##########################################################"
-    echo "############ Create Org2 Identities ######################"
-    echo "##########################################################"
-
-    createOrg2 $NW_CFG_PATH $CA_ORG2_PORT
+    
+    for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+        echo "##########################################################"
+        echo "############ Create Org${ii} Identities ######################"
+        echo "##########################################################"
+        port=$(bash -c "echo \$CA_ORG${ii}_PORT")
+        createOrg $NW_CFG_PATH $port ${ii}
+    done
 
     echo "##########################################################"
     echo "############ Create Orderer Org Identities ###############"
@@ -281,8 +266,8 @@ function createOrgs() {
   fi
 
   echo
-  echo "Generate CCP files for Org1 and Org2 in $NW_CFG_PATH"
-  $NW_CFG_PATH/ccp-generate.sh $NW_CFG_PATH
+  echo "Generate CCP files for all the Orgs in $NW_CFG_PATH"
+  $NW_CFG_PATH/ccp-generate.sh $NW_CFG_PATH $MAX_NUM_ORGS
 }
 
 # Once you create the organization crypto material, you need to create the
@@ -391,8 +376,8 @@ function createChannel() {
   # more to create the channel creation transaction and the anchor peer updates.
   # configtx.yaml is mounted in the cli container, which allows us to use it to
   # create the channel artifacts
-  echo "calling createChannel.sh ORDERER_PORT PEER_ORG1_PORT PEER_ORG2_PORT: $ORDERER_PORT $PEER_ORG1_PORT $PEER_ORG2_PORT"
-  scripts/createChannel.sh $CHANNEL_NAME $CLI_DELAY $MAX_RETRY $VERBOSE $NW_CFG_PATH $ORDERER_PORT $PEER_ORG1_PORT $PEER_ORG2_PORT $COMPOSE_PROJECT_NAME $DOCKER_PROFILES
+  echo "calling createChannel.sh ORDERER_PORT CHANNEL_PROFILE NUM_ORGS: $ORDERER_PORT $CHANNEL_PROFILE $NUM_ORGS"
+  scripts/createChannel.sh $CHANNEL_NAME $CHANNEL_PROFILE $CLI_DELAY $MAX_RETRY $VERBOSE $NW_CFG_PATH $ORDERER_PORT $NUM_ORGS $COMPOSE_PROJECT_NAME $DOCKER_PROFILES
   if [ $? -ne 0 ]; then
     echo "Error !!! Create channel failed"
     exit 1
@@ -403,7 +388,7 @@ function createChannel() {
 ## Call the script to install and instantiate a chaincode on the channel
 function deployCC() {
   echo "In function deployCC $APP_ROOT for $COMPOSE_PROJECT_NAME"
-  scripts/deployCC.sh $CHANNEL_NAME $CC_SRC_LANGUAGE $VERSION $CLI_DELAY $MAX_RETRY $VERBOSE $CC_CHAIN_CODE $NW_CFG_PATH $PEER_ORG1_PORT $PEER_ORG2_PORT $ORDERER_PORT $APP_ROOT $COMPOSE_PROJECT_NAME $DOCKER_PROFILES $PDC_CONFIG
+  scripts/deployCC.sh $CHANNEL_NAME $CC_SRC_LANGUAGE $VERSION $CLI_DELAY $MAX_RETRY $VERBOSE $CC_CHAIN_CODE $NW_CFG_PATH $NUM_ORGS $ORDERER_PORT $APP_ROOT $COMPOSE_PROJECT_NAME $DOCKER_PROFILES $PDC_CONFIG
 
   if [ $? -ne 0 ]; then
     echo "ERROR !!! Deploying chaincode failed"
@@ -416,7 +401,7 @@ function deployCC() {
 ## Call the script to invoke a chaincode function on the channel
 function invokeCC() {
   echo "In function invokeCC $APP_ROOT for $COMPOSE_PROJECT_NAME"
-  scripts/invokeCC.sh $CHANNEL_NAME $CC_SRC_LANGUAGE $VERSION $CLI_DELAY $MAX_RETRY $VERBOSE $CC_CHAIN_CODE $NW_CFG_PATH $PEER_ORG1_PORT $PEER_ORG2_PORT $ORDERER_PORT $APP_ROOT $COMPOSE_PROJECT_NAME $DOCKER_PROFILES $TX_MODE $TX_TARGET_ORG
+  scripts/invokeCC.sh $CHANNEL_NAME $CC_SRC_LANGUAGE $VERSION $CLI_DELAY $MAX_RETRY $VERBOSE $CC_CHAIN_CODE $NW_CFG_PATH $NUM_ORGS $ORDERER_PORT $APP_ROOT $COMPOSE_PROJECT_NAME $DOCKER_PROFILES $TX_MODE $TX_TARGET_ORG
 
   if [ $? -ne 0 ]; then
     echo "ERROR !!! Invoking chaincode function failed"
@@ -456,8 +441,9 @@ function networkDown() {
     # remove orderer block and other channel configuration transactions and certs
     rm -rf $NW_CFG_PATH/system-genesis-block/*.block $NW_CFG_PATH/peerOrganizations $NW_CFG_PATH/ordererOrganizations
     ## remove fabric ca artifacts
-    rm -rf $NW_CFG_PATH/fabric-ca/org1/msp $NW_CFG_PATH/fabric-ca/org1/tls-cert.pem $NW_CFG_PATH/fabric-ca/org1/ca-cert.pem $NW_CFG_PATH/fabric-ca/org1/IssuerPublicKey $NW_CFG_PATH/fabric-ca/org1/IssuerRevocationPublicKey $NW_CFG_PATH/fabric-ca/org1/fabric-ca-server.db
-    rm -rf $NW_CFG_PATH/fabric-ca/org2/msp $NW_CFG_PATH/fabric-ca/org2/tls-cert.pem $NW_CFG_PATH/fabric-ca/org2/ca-cert.pem $NW_CFG_PATH/fabric-ca/org2/IssuerPublicKey $NW_CFG_PATH/fabric-ca/org2/IssuerRevocationPublicKey $NW_CFG_PATH/fabric-ca/org2/fabric-ca-server.db
+    for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+        rm -rf $NW_CFG_PATH/fabric-ca/org${ii}/msp $NW_CFG_PATH/fabric-ca/org${ii}/tls-cert.pem $NW_CFG_PATH/fabric-ca/org${ii}/ca-cert.pem $NW_CFG_PATH/fabric-ca/org${ii}/IssuerPublicKey $NW_CFG_PATH/fabric-ca/org${ii}/IssuerRevocationPublicKey $NW_CFG_PATH/fabric-ca/org${ii}/fabric-ca-server.db
+    done
     rm -rf $NW_CFG_PATH/fabric-ca/ordererOrg/msp $NW_CFG_PATH/fabric-ca/ordererOrg/tls-cert.pem $NW_CFG_PATH/fabric-ca/ordererOrg/ca-cert.pem $NW_CFG_PATH/fabric-ca/ordererOrg/IssuerPublicKey $NW_CFG_PATH/fabric-ca/ordererOrg/IssuerRevocationPublicKey $NW_CFG_PATH/fabric-ca/ordererOrg/fabric-ca-server.db
     # remove channel and script artifacts
     rm -rf $NW_CFG_PATH/channel-artifacts
@@ -515,27 +501,40 @@ TX_TARGET_ORG="1"
 ROLE="network1"
 ROLE_FILE=""
 ORDERER_LISTENPORT="$ORDERER_LISTENPORT"
+MAX_NUM_ORGS=5
 
-export N1_CA_ORG1_PORT=${N1_CA_ORG1_PORT:-7054}
-export N1_CA_ORG2_PORT=${N1_CA_ORG2_PORT:-7064}
+for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+    export "N1_CA_ORG${ii}_PORT"=$((7054 + ($ii-1)*10))
+    port=$(bash -c "echo \$N1_CA_ORG${ii}_PORT")
+    echo N1_CA_ORG${ii}_PORT $port
+done
 export N1_CA_ORDERER_PORT=${N1_CA_ORDERER_PORT:-9054}
 export N1_CHAINCODELISTEN_PORT=${N1_CHAINCODELISTEN_PORT:-7052}
 export N1_COUCHDB0_PORT=${N1_COUCHDB0_PORT:-7084}
 export N1_COUCHDB1_PORT=${N1_COUCHDB1_PORT:-7094}
 export N1_ORDERER_PORT=${N1_ORDERER_PORT:-7050}
-export N1_PEER_ORG1_PORT=${N1_PEER_ORG1_PORT:-7051}
-export N1_PEER_ORG2_PORT=${N1_PEER_ORG2_PORT:-7061}
+for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+    export "N1_PEER_ORG${ii}_PORT"=$((7051 + ($ii-1)*10))
+    port=$(bash -c "echo \$N1_PEER_ORG${ii}_PORT")
+    echo N1_PEER_ORG${ii}_PORT $port
+done
 
 
-export N2_CA_ORG1_PORT=${N2_CA_ORG1_PORT:-5054}
-export N2_CA_ORG2_PORT=${N2_CA_ORG2_PORT:-5064}
+for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+    export "N2_CA_ORG${ii}_PORT"=$((5054 + ($ii-1)*10))
+    port=$(bash -c "echo \$N2_CA_ORG${ii}_PORT")
+    echo N2_CA_ORG${ii}_PORT $port
+done
 export N2_CA_ORDERER_PORT=${N2_CA_ORDERER_PORT:-8054}
 export N2_CHAINCODELISTEN_PORT=${N2_CHAINCODELISTEN_PORT:-9052}
 export N2_COUCHDB0_PORT=${N2_COUCHDB0_PORT:-9084}
 export N2_COUCHDB1_PORT=${N2_COUCHDB1_PORT:-9094}
 export N2_ORDERER_PORT=${N2_ORDERER_PORT:-9050}
-export N2_PEER_ORG1_PORT=${N2_PEER_ORG1_PORT:-9051}
-export N2_PEER_ORG2_PORT=${N2_PEER_ORG2_PORT:-9061}
+for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+    export "N2_PEER_ORG${ii}_PORT"=$((9051 + ($ii-1)*10))
+    port=$(bash -c "echo \$N2_PEER_ORG${ii}_PORT")
+    echo N2_PEER_ORG${ii}_PORT $port
+done
 
 export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
 
@@ -662,6 +661,12 @@ done
 
 export IMAGE_TAG=${IMAGETAG}
 export CA_IMAGE_TAG=${CAIMAGETAG}
+NUM_ORGS=${DOCKER_PROFILES:0:1}
+if [ "$DOCKER_PROFILES" = "2-nodes" ]; then
+    export CHANNEL_PROFILE="TwoOrgsChannel"
+else
+    export CHANNEL_PROFILE="OneOrgChannel"
+fi 
 
 SCRIPT_PATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 APP_ROOT=${APP_ROOT:-"${SCRIPT_PATH}/../.."}
@@ -688,7 +693,6 @@ echo "SCRIPT_PATH: $SCRIPT_PATH"
 echo "NW CFG PATH: $NW_CFG_PATH"
 export APP_ROOT=$APP_ROOT
 
-
 echo "Setting up Environment"
 echo "==================================================================="
 echo "General"
@@ -696,42 +700,47 @@ echo "- Application Root (APP_ROOT)                     : ${APP_ROOT}"
 echo "- Current Script Path (SCRIPT_PATH)               : ${SCRIPT_PATH}"
 echo "Network Parameters ${ROLE}"
 if [ "${ROLE}" = "network1" ]; then
-  echo " - Peer Org1 Port                                 : ${N1_PEER_ORG1_PORT}"
-  echo " - Peer Org2 Port                                 : ${N1_PEER_ORG2_PORT}"
   echo " - Peer CouchDb0 Port                             : ${N1_COUCHDB0_PORT}"
   echo " - Peer CouchDb1 Port                             : ${N1_COUCHDB1_PORT}"
-  echo " - CA Org1 Port                                   : ${N1_CA_ORG1_PORT}"
-  echo " - CA Org2 Port                                   : ${N1_CA_ORG2_PORT}"
   echo " - Orderer Port                                   : ${N1_ORDERER_PORT}"
   echo " - Orderer CA Port                                : ${N1_CA_ORDERER_PORT}"
+  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+      port=$(bash -c "echo \$N1_CA_ORG${ii}_PORT")
+      echo " - CA Org${ii} Port                                   : ${port}"
+      export "CA_ORG${ii}_PORT"=$port
+  done
+  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+      port=$(bash -c "echo \$N1_PEER_ORG${ii}_PORT")
+      echo " - Peer Org${ii} Port                                 : ${port}"
+      export "PEER_ORG${ii}_PORT"=$port
+  done
+
   export ORDERER_PORT=${N1_CA_ORDERER_PORT}
-  export PEER_ORG1_PORT=${N1_PEER_ORG1_PORT}
-  export PEER_ORG2_PORT=${N1_PEER_ORG2_PORT}
   export CHAINCODELISTENADDRESS=${N1_CHAINCODELISTEN_PORT}
   export NW_CFG_PATH=$NW_CFG_PATH
   export COUCHDB0_PORT=${N1_COUCHDB0_PORT}
   export COUCHDB1_PORT=${N1_COUCHDB1_PORT}
-  export CA_ORG1_PORT=${N1_CA_ORG1_PORT}
-  export CA_ORG2_PORT=${N1_CA_ORG2_PORT}
   export CA_ORDERER_PORT=${N1_CA_ORDERER_PORT}
 else
-  echo " - Peer Org1 Port                                 : ${N2_PEER_ORG1_PORT}"
-  echo " - Peer Org2 Port                                 : ${N2_PEER_ORG2_PORT}"
   echo " - Peer CouchDb0 Port                             : ${N2_COUCHDB0_PORT}"
   echo " - Peer CouchDb1 Port                             : ${N2_COUCHDB1_PORT}"
-  echo " - CA Org1 Port                                   : ${N2_CA_ORG1_PORT}"
-  echo " - CA Org2 Port                                   : ${N2_CA_ORG2_PORT}"
   echo " - Orderer Port                                   : ${N2_ORDERER_PORT}"
   echo " - Orderer CA Port                                : ${N2_CA_ORDERER_PORT}"
+  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+      port=$(bash -c "echo \$N2_CA_ORG${ii}_PORT")
+      echo " - CA Org${ii} Port                                   : ${port}"
+      export "CA_ORG${ii}_PORT"=$port
+  done
+  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+      port=$(bash -c "echo \$N2_PEER_ORG${ii}_PORT")
+      echo " - Peer Org${ii} Port                                 : ${port}"
+      export "PEER_ORG${ii}_PORT"=$port
+  done
   export ORDERER_PORT=${N2_CA_ORDERER_PORT}
-  export PEER_ORG1_PORT=${N2_PEER_ORG1_PORT}
-  export PEER_ORG2_PORT=${N2_PEER_ORG2_PORT}
   export CHAINCODELISTENADDRESS=${N2_CHAINCODELISTEN_PORT}
   export NW_CFG_PATH=$NW_CFG_PATH
   export COUCHDB0_PORT=${N2_COUCHDB0_PORT}
   export COUCHDB1_PORT=${N2_COUCHDB1_PORT}
-  export CA_ORG1_PORT=${N2_CA_ORG1_PORT}
-  export CA_ORG2_PORT=${N2_CA_ORG2_PORT}
   export CA_ORDERER_PORT=${N2_CA_ORDERER_PORT}
 fi
 echo " - Compose Env Path                               : ${SCRIPT_PATH}/${ROLE}.env"
