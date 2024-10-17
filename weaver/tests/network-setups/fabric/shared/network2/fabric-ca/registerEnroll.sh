@@ -11,7 +11,6 @@ function createOrg {
   ORG_ID="$3"
   echo "NW_CFG_PATH = $NW_CFG_PATH"
 	echo "Enroll the CA admin"
-  echo
 	mkdir -p $NW_CFG_PATH/peerOrganizations/org${ORG_ID}.network2.com/
 
 	export FABRIC_CA_CLIENT_HOME=$NW_CFG_PATH/peerOrganizations/org${ORG_ID}.network2.com/

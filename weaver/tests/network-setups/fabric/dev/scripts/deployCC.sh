@@ -169,7 +169,6 @@ queryInstalled() {
 approveForMyOrg() {
     ORG="$1"
     PEER_ORG_PORT="$2"
-    ORDERER_PORT="$3"
     #echo "ORDERER_PORT = $ORDERER_PORT"
     setGlobals $ORG $PEER_ORG_PORT $NW_NAME
     set -x
@@ -384,7 +383,7 @@ queryInstalled 1 $PEER_ORG1_PORT $NW_NAME
 ## approve the definition for org1
 for ii in $(seq 1 ${NUM_ORGS}); do
     PEER_ORG_PORT=$(bash -c "echo \$PEER_ORG${ii}_PORT")
-    approveForMyOrg ${ii} $PEER_ORG_PORT $ORD_PORT $NW_NAME
+    approveForMyOrg ${ii} $PEER_ORG_PORT $NW_NAME
     
     ## check whether the chaincode definition is ready to be committed
     ## expect org1 to have approved and org2 not to

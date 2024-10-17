@@ -186,7 +186,7 @@ function createOrgs() {
     echo "##########################################################"
     echo
     
-    for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+    for ii in $(seq 1 ${NUM_ORGS}); do
         echo "##########################################################"
         echo "############ Create Org${ii} Identities ######################"
         echo "##########################################################"
@@ -245,11 +245,13 @@ function createOrgs() {
 
     docker compose -f $COMPOSE_FILE_CA --env-file=docker.real.env --profile $DOCKER_PROFILES up -d 2>&1
 
+    sleep 10
+
     . $NW_CFG_PATH/fabric-ca/registerEnroll.sh
 
     sleep 10
     
-    for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+    for ii in $(seq 1 ${NUM_ORGS}); do
         echo "##########################################################"
         echo "############ Create Org${ii} Identities ######################"
         echo "##########################################################"
@@ -267,7 +269,7 @@ function createOrgs() {
 
   echo
   echo "Generate CCP files for all the Orgs in $NW_CFG_PATH"
-  $NW_CFG_PATH/ccp-generate.sh $NW_CFG_PATH $MAX_NUM_ORGS
+  $NW_CFG_PATH/ccp-generate.sh $NW_CFG_PATH $NUM_ORGS
 }
 
 # Once you create the organization crypto material, you need to create the
@@ -276,7 +278,7 @@ function createOrgs() {
 
 # The configtxgen tool is used to create the genesis block. Configtxgen consumes a
 # "configtx.yaml" file that contains the definitions for the sample network. The
-# genesis block is defiend using the "TwoOrgsOrdererGenesis" profile at the bottom
+# genesis block is defiend using the "$ORDERER_GENESIS_PROFILE" variable at the bottom
 # of the file. This profile defines a sample consortium, "SampleConsortium",
 # consisting of our two Peer Orgs. This consortium defines which organizations are
 # recognized as members of the network. The peer and ordering organizations are defined
@@ -314,7 +316,7 @@ function createConsortium() {
   # Note: For some unknown reason (at least for now) the block file can't be
   # named orderer.genesis.block or the orderer will fail to launch!
   set -x
-  configtxgen -profile TwoOrgsOrdererGenesis -channelID system-channel -outputBlock $NW_CFG_PATH/system-genesis-block/genesis.block
+  configtxgen -profile $ORDERER_GENESIS_PROFILE -channelID system-channel -outputBlock $NW_CFG_PATH/system-genesis-block/genesis.block
   res=$?
   set +x
   if [ $res -ne 0 ]; then
@@ -336,12 +338,13 @@ function networkUp() {
 
   # generate artifacts if they don't exist
   if [ ! -d "$NW_CFG_PATH/peerOrganizations" ]; then
+    ./scripts/crypto-config-generate.sh $NW_CFG_PATH $NUM_ORGS $NETWORK_NAME
     createOrgs
     createConsortium
   else
     # If artifacts are present, no need to create them, but we need to start Fabric CAs
     echo "Starting Fabric CA Containers"
-    #cat docker.env
+    cat docker.env
     envsubst < docker.env > docker.real.env
     envsubst < docker/docker-compose-ca.yaml > docker/docker-compose-ca.real.yaml
     COMPOSE_FILE_CA=docker/docker-compose-ca.real.yaml
@@ -416,15 +419,18 @@ function networkDown() {
   cat docker.env
   envsubst < docker.env > docker.real.env
 
-  envsubst < docker/docker-compose-couch.yaml > docker/docker-compose-couch.real.yaml
+  cat docker/docker-compose-couch.real.yaml > /dev/null || envsubst < docker/docker-compose-couch.yaml > docker/docker-compose-couch.real.yaml
   COMPOSE_FILE_COUCH=docker/docker-compose-couch.real.yaml
 
-  envsubst < docker/docker-compose-test-net.yaml > docker/docker-compose-test-net.real.yaml
+  cat docker/docker-compose-test-net.real.yaml > /dev/null || envsubst < docker/docker-compose-test-net.yaml > docker/docker-compose-test-net.real.yaml
   COMPOSE_FILE_BASE=docker/docker-compose-test-net.real.yaml
   COMPOSE_FILES="-f ${COMPOSE_FILE_BASE}"
 
-  cat docker.env
+  cat docker/docker-compose-ca.real.yaml > /dev/null || envsubst < docker/docker-compose-ca.yaml > docker/docker-compose-ca.real.yaml
+  COMPOSE_FILE_CA=docker/docker-compose-ca.real.yaml
+
   envsubst < docker.env > docker.real.env
+  cat docker.real.env
   APP_ROOT=$APP_ROOT docker compose -f $COMPOSE_FILE_BASE -f $COMPOSE_FILE_COUCH -f $COMPOSE_FILE_CA --env-file=docker.real.env --profile $DOCKER_PROFILES down --volumes --remove-orphans
   #docker compose -f $COMPOSE_FILE_BASE -f $COMPOSE_FILE_COUCH -f $COMPOSE_FILE_CA --env-file=docker.env down --volumes --remove-orphans
   # docker compose -f $COMPOSE_FILE_COUCH_ORG3 -f $COMPOSE_FILE_ORG3 down --volumes --remove-orphans
@@ -441,13 +447,14 @@ function networkDown() {
     # remove orderer block and other channel configuration transactions and certs
     rm -rf $NW_CFG_PATH/system-genesis-block/*.block $NW_CFG_PATH/peerOrganizations $NW_CFG_PATH/ordererOrganizations
     ## remove fabric ca artifacts
-    for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+    for ii in $(seq 1 ${NUM_ORGS}); do
         rm -rf $NW_CFG_PATH/fabric-ca/org${ii}/msp $NW_CFG_PATH/fabric-ca/org${ii}/tls-cert.pem $NW_CFG_PATH/fabric-ca/org${ii}/ca-cert.pem $NW_CFG_PATH/fabric-ca/org${ii}/IssuerPublicKey $NW_CFG_PATH/fabric-ca/org${ii}/IssuerRevocationPublicKey $NW_CFG_PATH/fabric-ca/org${ii}/fabric-ca-server.db
     done
     rm -rf $NW_CFG_PATH/fabric-ca/ordererOrg/msp $NW_CFG_PATH/fabric-ca/ordererOrg/tls-cert.pem $NW_CFG_PATH/fabric-ca/ordererOrg/ca-cert.pem $NW_CFG_PATH/fabric-ca/ordererOrg/IssuerPublicKey $NW_CFG_PATH/fabric-ca/ordererOrg/IssuerRevocationPublicKey $NW_CFG_PATH/fabric-ca/ordererOrg/fabric-ca-server.db
     # remove channel and script artifacts
     rm -rf $NW_CFG_PATH/channel-artifacts
     rm docker.env *.tmp.env docker.real.env docker/*real* *.tar.gz log.txt || echo
+    ./scripts/crypto-config-generate.sh $NW_CFG_PATH 2 $NETWORK_NAME
   elif [ "$MODE" == "down" ]; then
     rm docker.env *.tmp.env docker.real.env docker/*real* *.tar.gz log.txt || echo
   else
@@ -662,11 +669,18 @@ done
 export IMAGE_TAG=${IMAGETAG}
 export CA_IMAGE_TAG=${CAIMAGETAG}
 NUM_ORGS=${DOCKER_PROFILES:0:1}
+
 if [ "$DOCKER_PROFILES" = "2-nodes" ]; then
-    export CHANNEL_PROFILE="TwoOrgsChannel"
+  export CHANNEL_PROFILE="TwoOrgsChannel"
 else
-    export CHANNEL_PROFILE="OneOrgChannel"
-fi 
+  export CHANNEL_PROFILE="NOrgsChannel"
+fi
+
+if [ "$DOCKER_PROFILES" = "2-nodes" ]; then
+  export ORDERER_GENESIS_PROFILE="TwoOrgsOrdererGenesis"
+else
+  export ORDERER_GENESIS_PROFILE="NOrgsOrdererGenesis"
+fi
 
 SCRIPT_PATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 APP_ROOT=${APP_ROOT:-"${SCRIPT_PATH}/../.."}
@@ -715,7 +729,7 @@ if [ "${ROLE}" = "network1" ]; then
       export "PEER_ORG${ii}_PORT"=$port
   done
 
-  export ORDERER_PORT=${N1_CA_ORDERER_PORT}
+  export ORDERER_PORT=${N1_ORDERER_PORT}
   export CHAINCODELISTENADDRESS=${N1_CHAINCODELISTEN_PORT}
   export NW_CFG_PATH=$NW_CFG_PATH
   export COUCHDB0_PORT=${N1_COUCHDB0_PORT}
@@ -736,7 +750,7 @@ else
       echo " - Peer Org${ii} Port                                 : ${port}"
       export "PEER_ORG${ii}_PORT"=$port
   done
-  export ORDERER_PORT=${N2_CA_ORDERER_PORT}
+  export ORDERER_PORT=${N2_ORDERER_PORT}
   export CHAINCODELISTENADDRESS=${N2_CHAINCODELISTEN_PORT}
   export NW_CFG_PATH=$NW_CFG_PATH
   export COUCHDB0_PORT=${N2_COUCHDB0_PORT}
@@ -783,6 +797,7 @@ fi
 
 
 if [ $ROLE == "network1" ]; then
+  NETWORK_NAME="network1"
   ROLE_FILE="network1.env"
   echo "Role File = $ROLE_FILE"
   cat $ROLE_FILE
@@ -792,8 +807,14 @@ if [ $ROLE == "network1" ]; then
   echo "NW_CFG_PATH" = $NW_CFG_PATH
   rm -f docker.env
   cat base.env network1.env > network1.tmp.env
+  echo "" >> network1.tmp.env
+  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+      echo "PEER_ORG${ii}_PORT=\${N1_PEER_ORG${ii}_PORT}" >> network1.tmp.env
+      echo "CA_ORG${ii}_PORT=\${N1_CA_ORG${ii}_PORT}" >> network1.tmp.env
+  done
   echo "APP_ROOT=${APP_ROOT}" | cat - network1.tmp.env >  docker.env
 elif [ $ROLE == "network2" ]; then
+  NETWORK_NAME="network2"
   ROLE_FILE="network2.env"
   echo "Role File = $ROLE_FILE"
   cat $ROLE_FILE
@@ -803,6 +824,11 @@ elif [ $ROLE == "network2" ]; then
   echo "NW_CFG_PATH" = $NW_CFG_PATH
   rm -f docker.env
   cat base.env network2.env > network2.tmp.env
+  echo "" >> network2.tmp.env
+  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+      echo "PEER_ORG${ii}_PORT=\${N2_PEER_ORG${ii}_PORT}" >> network2.tmp.env
+      echo "CA_ORG${ii}_PORT=\${N2_CA_ORG${ii}_PORT}" >> network2.tmp.env
+  done
   echo "APP_ROOT=${APP_ROOT}" | cat - network2.tmp.env >  docker.env
 else
   echo "Invalid Role"

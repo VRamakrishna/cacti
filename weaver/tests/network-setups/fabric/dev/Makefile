@@ -10,11 +10,15 @@ all: start
 	
 .PHONY: artifacts-network1
 artifacts-network1:
-	cp -r ../network-artifacts/network1/* ../shared/network1/
+	if [ "$(PROFILE)" = "1-node" ] || [ "$(PROFILE)" = "2-nodes" ]; then \
+		cp -r ../network-artifacts/network1/* ../shared/network1/; \
+	fi
 	
 .PHONY: artifacts-network2
 artifacts-network2:
-	cp -r ../network-artifacts/network2/* ../shared/network2/
+	if [ "$(PROFILE)" = "1-node" ] || [ "$(PROFILE)" = "2-nodes" ]; then \
+		cp -r ../network-artifacts/network2/* ../shared/network2/; \
+	fi
 
 .PHONY: start
 start: start-network1 start-network2

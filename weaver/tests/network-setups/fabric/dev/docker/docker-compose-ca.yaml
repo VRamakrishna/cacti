@@ -15,7 +15,7 @@ services:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
       - FABRIC_CA_SERVER_CA_NAME=ca.org1.${COMPOSE_PROJECT_NAME}.com
       - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=$CA_ORG1_PORT
+      - FABRIC_CA_SERVER_PORT=${CA_ORG1_PORT}
     ports:
       - "${CA_ORG1_PORT}:${CA_ORG1_PORT}"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
@@ -32,7 +32,7 @@ services:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
       - FABRIC_CA_SERVER_CA_NAME=ca.org2.${COMPOSE_PROJECT_NAME}.com
       - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=$CA_ORG2_PORT
+      - FABRIC_CA_SERVER_PORT=${CA_ORG2_PORT}
     ports:
       - "${CA_ORG2_PORT}:${CA_ORG2_PORT}"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
@@ -49,7 +49,7 @@ services:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
       - FABRIC_CA_SERVER_CA_NAME=ca.org3.${COMPOSE_PROJECT_NAME}.com
       - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=$CA_ORG3_PORT
+      - FABRIC_CA_SERVER_PORT=${CA_ORG3_PORT}
     ports:
       - "${CA_ORG3_PORT}:${CA_ORG3_PORT}"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
@@ -66,7 +66,7 @@ services:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
       - FABRIC_CA_SERVER_CA_NAME=ca.org4.${COMPOSE_PROJECT_NAME}.com
       - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=$CA_ORG4_PORT
+      - FABRIC_CA_SERVER_PORT=${CA_ORG4_PORT}
     ports:
       - "${CA_ORG4_PORT}:${CA_ORG4_PORT}"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
@@ -83,7 +83,7 @@ services:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
       - FABRIC_CA_SERVER_CA_NAME=ca.org5.${COMPOSE_PROJECT_NAME}.com
       - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=$CA_ORG5_PORT
+      - FABRIC_CA_SERVER_PORT=${CA_ORG5_PORT}
     ports:
       - "${CA_ORG5_PORT}:${CA_ORG5_PORT}"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
@@ -99,7 +99,7 @@ services:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
       - FABRIC_CA_SERVER_CA_NAME=ca.orderer.${COMPOSE_PROJECT_NAME}.com
       - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=$CA_ORDERER_PORT
+      - FABRIC_CA_SERVER_PORT=${CA_ORDERER_PORT}
     ports:
       - "${CA_ORDERER_PORT}:${CA_ORDERER_PORT}"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'

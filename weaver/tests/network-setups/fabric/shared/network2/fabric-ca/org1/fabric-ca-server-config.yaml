@@ -246,6 +246,8 @@ affiliations:
    org1:
       - department1
       - department2
+   org1:
+      - department1
    org2:
       - department1
 
@@ -318,7 +320,7 @@ csr:
         O: org1.network2.com
         OU: Fabric
    hosts:
-     - e7bbd10fb786
+     - 6bbd89430166
      - localhost
      - org1.network2.com
    ca:

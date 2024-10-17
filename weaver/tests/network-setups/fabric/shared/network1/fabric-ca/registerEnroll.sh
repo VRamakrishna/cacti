@@ -4,7 +4,7 @@
 
 
 
-function createorg {
+function createOrg {
 
   NW_CFG_PATH="$1"
   CA_PORT="$2"

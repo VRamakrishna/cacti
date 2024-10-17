@@ -44,6 +44,8 @@ Organizations:
         OrdererEndpoints:
             - orderer.network1.com:7050
 
+    ## Orgs
+
     - &Org1
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
@@ -78,7 +80,7 @@ Organizations:
             # encoded in the genesis block in the Application section context
             - Host: peer0.org1.network1.com
               Port: 7051
-              
+
     - &Org2
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
@@ -113,6 +115,8 @@ Organizations:
             # encoded in the genesis block in the Application section context
             - Host: peer0.org2.network1.com
               Port: 7061
+
+
 
 ################################################################################
 #
