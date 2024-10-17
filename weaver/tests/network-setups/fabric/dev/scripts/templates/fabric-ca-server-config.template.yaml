@@ -243,7 +243,7 @@ ldap:
 # which are always stored in lower case.
 #############################################################################
 affiliations:
-   org2:
+   org${ORG}:
       - department1
       - department2
    org1:
@@ -309,7 +309,7 @@ signing:
 #     CA certificates though it can still issue end entity certificates.
 ###########################################################################
 csr:
-   cn: ca.org2.network2.com
+   cn: ca.org${ORG}.${NETWORK}.com
    keyrequest:
      algo: ecdsa
      size: 256
@@ -317,12 +317,12 @@ csr:
       - C: US
         ST: "North Carolina"
         L:
-        O: org2.network2.com
+        O: org${ORG}.${NETWORK}.com
         OU: Fabric
    hosts:
      - 6bbd89430166
      - localhost
-     - org2.network2.com
+     - org${ORG}.${NETWORK}.com
    ca:
       expiry: 131400h
       pathlength: 1

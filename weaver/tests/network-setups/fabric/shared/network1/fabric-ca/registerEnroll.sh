@@ -4,7 +4,7 @@
 
 
 
-function createorg {
+function createOrg {
 
   NW_CFG_PATH="$1"
   CA_PORT="$2"
@@ -24,16 +24,16 @@ function createorg {
   echo 'NodeOUs:
   Enable: true
   ClientOUIdentifier:
-    Certificate: cacerts/localhost-'${CA_PORT}'-ca-org${ORG_ID}-network1-com.pem
+    Certificate: cacerts/localhost-'${CA_PORT}'-ca-org'${ORG_ID}'-network1-com.pem
     OrganizationalUnitIdentifier: client
   PeerOUIdentifier:
-    Certificate: cacerts/localhost-'${CA_PORT}'-ca-org${ORG_ID}-network1-com.pem
+    Certificate: cacerts/localhost-'${CA_PORT}'-ca-org'${ORG_ID}'-network1-com.pem
     OrganizationalUnitIdentifier: peer
   AdminOUIdentifier:
-    Certificate: cacerts/localhost-'${CA_PORT}'-ca-org${ORG_ID}-network1-com.pem
+    Certificate: cacerts/localhost-'${CA_PORT}'-ca-org'${ORG_ID}'-network1-com.pem
     OrganizationalUnitIdentifier: admin
   OrdererOUIdentifier:
-    Certificate: cacerts/localhost-'${CA_PORT}'-ca-org${ORG_ID}-network1-com.pem
+    Certificate: cacerts/localhost-'${CA_PORT}'-ca-org'${ORG_ID}'-network1-com.pem
     OrganizationalUnitIdentifier: orderer' > $NW_CFG_PATH/peerOrganizations/org${ORG_ID}.network1.com/msp/config.yaml
 
   echo
