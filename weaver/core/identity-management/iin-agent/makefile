@@ -4,6 +4,7 @@ DOCKER_REGISTRY ?= ghcr.io/hyperledger
 GIT_URL = https://github.com/hyperledger/cacti/weaver/core/identity-management/iin-agent
 DLT_SPECIFIC_DIR ?= .
 COMPOSE_ARG ?=
+PROFILE ?=
 
 build: .npmrc
 	npm install --workspaces=false
@@ -70,6 +71,12 @@ deploy:
 stop:
 	docker compose $(COMPOSE_ARG) down
 
+deploy-all:
+	./scripts/deploy-all.sh up $(PROFILE)
+
+stop-all:
+	./scripts/deploy-all.sh down $(PROFILE)
+
 re-deploy: stop deploy
 	
 test-local: build-local
@@ -77,6 +84,8 @@ test-local: build-local
 
 clean:
 	rm -rf node_modules package-lock.json out
+	./scripts/gen-n-org-config.sh clean
 	
 clean-local:
 	rm -rf node_modules package-lock.json out protos-js cacti-weaver-sdk-fabric
+	./scripts/gen-n-org-config.sh clean

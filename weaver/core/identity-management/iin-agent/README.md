@@ -135,4 +135,43 @@ Sample `config.json` for fabric network ([template file here](./src/fabric-ledge
 
 Run `npm run dev` to start the agent in your terminal. (_Note_: we will support a containerized IIN agent in the future.)
 
+## For N Orgs in testnet
+
+Only for docker based deployment
+
+### Generate env and configs
+
+```bash
+./scripts/gen-n-org-config.sh <NUM-ORGS> <PATH-TO-WEAVER>
+```
+
+The files will be generated in `docker-testnet/configs-n` and `docker-testnet/envs-n`.
+
+If using locally built image, pass the image name as the last parameter, like:
+```bash
+./scripts/gen-n-org-config.sh <NUM-ORGS> <PATH-TO-WEAVER> <IMAGE-NAME>
+```
+
+To delete these files, run:
+```bash
+./scripts/gen-n-org-config.sh clean
+```
+
+These will also be deleted on running `make clean` or `make clean-local`. Note: this also deletes the build on host machine.
+
+### Deploy
+
+To deploy IIN-agents for 5 orgs, run:
+
+```bash
+make deploy-all PROFILE="5-nodes"
+```
+### Stop
+
+To stop all the 5 IIN-agents, run:
+
+```bash
+make stop-all PROFILE="5-nodes"
+```
+
 ---
