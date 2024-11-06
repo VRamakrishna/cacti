@@ -1011,7 +1011,7 @@ const interopHelper = async (
       `ViewB64: ${Buffer.from(interopFlowResponse.views[0].serializeBinary()).toString("base64")}`,
     );
     const remoteValue =
-      options["e2e-confidentiality"] === "true"
+      (options["e2e-confidentiality"] && options["e2e-confidentiality"] !== "false")
         ? InteroperableHelper.getResponseDataFromView(
             interopFlowResponse.views[0],
             keyCert.key.toBytes(),

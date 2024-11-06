@@ -10,6 +10,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -343,6 +344,7 @@ func (s *SmartContract) GenerateDbeUpdateVal(ctx contractapi.TransactionContextI
 	if err != nil {
 		return err
 	}
+    fmt.Printf("Recording DBE Update Request; Public Parameters Size: %d, entityId: %d\n", updateRequest.NewDistPublicParameters.N, entityId)
 
 	// Serialize the UpdateRequest for recording
 	updateRequestBytes, err = marshalDBEUpdateVal(updateRequest)
@@ -570,6 +572,7 @@ func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionCont
 		if err != nil {
 			return "", err
 		}
+        fmt.Printf("Latest DBE Update Request Public Parameters Size: %d\n", updateRequest.NewDistPublicParameters.N)
 		// Marshal updateRequest.NewDistPublicParameters to a byte array
 		updateRequestParamsBytes, err := marshalDistPublicParameters(updateRequest.NewDistPublicParameters)
 		if err != nil {
@@ -597,6 +600,7 @@ func (s *SmartContract) GetDbeUpdatePublicParams(ctx contractapi.TransactionCont
 		// Use DBEKey structure to encapsulate the above parameters plus 'latestEntityId'
 		dbeUpdateInfo = &common.DBEKey{Srs: lastUpdateRequestParamsBytes, Version: uint32(latestEntityId -1)}
 	}
+    fmt.Printf("Returning latest SRS Info to Caller: %+v\n", dbeUpdateInfo)
 	dbeUpdateInfoBytes, err := protoV2.Marshal(dbeUpdateInfo)
 	if err != nil {
 		return "", err

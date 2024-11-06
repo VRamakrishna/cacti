@@ -836,12 +836,15 @@ const submitTransactionWithRemoteViews = async (
   if (endorsingOrgs.length > 0) {
     tx.setEndorsingOrganizations(...endorsingOrgs);
   }
+  console.time('VIEW_VALIDATION');
   const [result, submitError] = await helpers.handlePromise(
     tx.submit(...ccArgs),
   );
   if (submitError) {
+    console.timeEnd('VIEW_VALIDATION');
     throw new Error(`submitTransaction Error: ${submitError}`);
   }
+  console.timeEnd('VIEW_VALIDATION');
   return result;
 };
 

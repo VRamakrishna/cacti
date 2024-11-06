@@ -39,3 +39,5 @@ fabric/shared/*/fabric-ca/org2/*
 
 fabric/shared/chaincode/*
 !fabric/shared/chaincode/.gitkeep
+
+**/package-lock.json

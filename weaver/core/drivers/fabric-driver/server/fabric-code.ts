@@ -174,7 +174,9 @@ async function invoke(
     }
 
     // submit query transaction and get result from chaincode
+    console.time('VIEW_GENERATION');
     const proposalResponseResult = await queryProposal.send(proposalRequest);
+    console.timeEnd('VIEW_GENERATION');
     //logger.debug(`${JSON.stringify(proposalResponseResult, null, 2)}`)
 
     // 4. Prepare the view and return.
@@ -214,6 +216,7 @@ async function invoke(
     gateway.disconnect();
     return viewPayload;
   } catch (error) {
+    console.timeEnd('VIEW_GENERATION');
     logger.error(`Failed to submit transaction: ${error}`);
     throw error;
   }

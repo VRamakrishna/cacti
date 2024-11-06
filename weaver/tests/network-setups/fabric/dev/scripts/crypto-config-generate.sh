@@ -118,6 +118,8 @@ function clean_old {
   rm -rf $ROOT_DIR/cryptogen/crypto-config-org?.yaml
 }
 
+echo -e "CRYPTO GENERATE ARGS: APP_ROOT: $1, NUM_ORGS: $NUM_ORGS, NETWORK: $3"
+
 clean_old $1
 
 for ii in $(seq 1 ${NUM_ORGS}); do

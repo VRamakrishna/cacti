@@ -716,9 +716,11 @@ async function invoke(
     if (endorsingOrgs.length > 0) { 
       tx.setEndorsingOrganizations(...endorsingOrgs);
     }
+    console.time("INVOKECC");
     const [result, submitError] = await handlePromise(
       tx.submit(...invocationSpec.args),
     );
+    console.timeEnd("INVOKECC");
     if (submitError) {
       throw new Error(`submitTransaction Error: ${submitError}`);
     }

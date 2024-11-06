@@ -378,6 +378,7 @@ func generateDBEPayload(srsVersion uint32, srsBytes, message []byte) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
+    fmt.Printf("Calling ENRYPT: publicParams.N: %d, srsVersion: %d, srsDpp.N: %d\n", publicParams.N, srsVersion, srsDpp.N)
 	ciphertext, err := Encrypt(message, targets, publicKey, publicParams)
 	if err != nil {
 		return nil, err

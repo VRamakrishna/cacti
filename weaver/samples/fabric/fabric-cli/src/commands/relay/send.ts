@@ -155,7 +155,7 @@ const command: GluegunCommand = {
           : "",
         "",
         options["requesting-org"] || "",
-        options["e2e-confidentiality"] === "true" ? true : false,
+        (options["e2e-confidentiality"] && options["e2e-confidentiality"] !== "false" ? true : false),
       )
       .then((test) => {
         console.log("Result: ", test);

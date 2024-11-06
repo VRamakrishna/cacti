@@ -172,11 +172,11 @@ if (process.argv.length < 3) {
 	process.exit(1);
 }
 
-const numOrgs = Number.parseInt(process.argv[2]);
+const numOrgs = Number.parseInt(process.argv[2].substring(0,1));
 if (isNaN(numOrgs)) {
 	console.log('Invalid argument: <number-of-orgs>:', process.argv[2]);
 	process.exit(1);
 }
 
-generateDockerComposePeersYamlFile('.', numOrgs);
-generateDockerComposeCAsYamlFile('.', numOrgs);
+generateDockerComposePeersYamlFile('../../docker', numOrgs);
+generateDockerComposeCAsYamlFile('../../docker', numOrgs);

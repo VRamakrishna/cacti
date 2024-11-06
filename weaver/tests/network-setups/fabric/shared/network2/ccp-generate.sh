@@ -14,11 +14,15 @@ function one_line_pem {
 function json_ccp {
     local PP=$(one_line_pem $4)
     local CP=$(one_line_pem $5)
+    hostname=$7
+    ca_hostname=$8
     sed -e "s/\${ORG}/$1/" \
         -e "s/\${P0PORT}/$2/" \
         -e "s/\${CAPORT}/$3/" \
         -e "s#\${PEERPEM}#$PP#" \
         -e "s#\${CAPEM}#$CP#" \
+        -e "s#\${HOSTNAME}#$hostname#" \
+        -e "s#\${CA_HOSTNAME}#$ca_hostname#" \
         $6/ccp-template.json
 }
 
@@ -44,9 +48,12 @@ for ii in $(seq 1 ${NUM_ORGS}); do
     CAPORT=$(bash -c "echo \$N2_CA_ORG${ii}_PORT")
     PEERPEM=$1/peerOrganizations/org${ii}.network2.com/tlsca/tlsca.org${ii}.network2.com-cert.pem
     CAPEM=$1/peerOrganizations/org${ii}.network2.com/ca/ca.org${ii}.network2.com-cert.pem
-
-    echo "$(json_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $1)" > $1/peerOrganizations/org${ii}.network2.com/connection-org${ii}.json
-    echo "$(yaml_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $ORDERER_PORT $ORDERER_PEM $1)" > $1/peerOrganizations/org${ii}.network2.com/connection-org${ii}.yaml
+    hostname="peer0.org${ii}.network2.com"
+    ca_hostname="ca.org${ii}.network2.com"
     echo "PEER PEM:" $PEERPEM
     echo "CA PEM:" $CAPEM
+
+    echo "$(json_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $1 localhost localhost)" > $1/peerOrganizations/org${ii}.network2.com/connection-org${ii}.json
+    echo "$(json_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $1 $hostname $ca_hostname)" > $1/peerOrganizations/org${ii}.network2.com/connection-org${ii}.docker.json
+    echo "$(yaml_ccp $ORG $P0PORT $CAPORT $PEERPEM $CAPEM $ORDERER_PORT $ORDERER_PEM $1)" > $1/peerOrganizations/org${ii}.network2.com/connection-org${ii}.yaml
 done

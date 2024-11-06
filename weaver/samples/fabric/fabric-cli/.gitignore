@@ -31,3 +31,5 @@ src/wallet-network2/*.id
 !src/wallet-network2/user1.id
 !src/wallet-network2/alice.id
 !src/wallet-network2/bob.id
+
+perf_tests_conf_data_sharing

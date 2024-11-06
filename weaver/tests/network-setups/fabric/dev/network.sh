@@ -508,42 +508,6 @@ TX_TARGET_ORG="1"
 ROLE="network1"
 ROLE_FILE=""
 ORDERER_LISTENPORT="$ORDERER_LISTENPORT"
-MAX_NUM_ORGS=5
-
-for ii in $(seq 1 ${MAX_NUM_ORGS}); do
-    export "N1_CA_ORG${ii}_PORT"=$((7054 + ($ii-1)*10))
-    port=$(bash -c "echo \$N1_CA_ORG${ii}_PORT")
-    echo N1_CA_ORG${ii}_PORT $port
-done
-export N1_CA_ORDERER_PORT=${N1_CA_ORDERER_PORT:-9054}
-export N1_CHAINCODELISTEN_PORT=${N1_CHAINCODELISTEN_PORT:-7052}
-export N1_COUCHDB0_PORT=${N1_COUCHDB0_PORT:-7084}
-export N1_COUCHDB1_PORT=${N1_COUCHDB1_PORT:-7094}
-export N1_ORDERER_PORT=${N1_ORDERER_PORT:-7050}
-for ii in $(seq 1 ${MAX_NUM_ORGS}); do
-    export "N1_PEER_ORG${ii}_PORT"=$((7051 + ($ii-1)*10))
-    port=$(bash -c "echo \$N1_PEER_ORG${ii}_PORT")
-    echo N1_PEER_ORG${ii}_PORT $port
-done
-
-
-for ii in $(seq 1 ${MAX_NUM_ORGS}); do
-    export "N2_CA_ORG${ii}_PORT"=$((5054 + ($ii-1)*10))
-    port=$(bash -c "echo \$N2_CA_ORG${ii}_PORT")
-    echo N2_CA_ORG${ii}_PORT $port
-done
-export N2_CA_ORDERER_PORT=${N2_CA_ORDERER_PORT:-8054}
-export N2_CHAINCODELISTEN_PORT=${N2_CHAINCODELISTEN_PORT:-9052}
-export N2_COUCHDB0_PORT=${N2_COUCHDB0_PORT:-9084}
-export N2_COUCHDB1_PORT=${N2_COUCHDB1_PORT:-9094}
-export N2_ORDERER_PORT=${N2_ORDERER_PORT:-9050}
-for ii in $(seq 1 ${MAX_NUM_ORGS}); do
-    export "N2_PEER_ORG${ii}_PORT"=$((9051 + ($ii-1)*10))
-    port=$(bash -c "echo \$N2_PEER_ORG${ii}_PORT")
-    echo N2_PEER_ORG${ii}_PORT $port
-done
-
-export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
 
 # Parse commandline args
 
@@ -670,12 +634,14 @@ export IMAGE_TAG=${IMAGETAG}
 export CA_IMAGE_TAG=${CAIMAGETAG}
 NUM_ORGS=${DOCKER_PROFILES:0:1}
 
+export CHANNEL_PROFILE="TwoOrgsChannel"
 if [ "$DOCKER_PROFILES" = "2-nodes" ]; then
   export CHANNEL_PROFILE="TwoOrgsChannel"
 else
   export CHANNEL_PROFILE="NOrgsChannel"
 fi
 
+export ORDERER_GENESIS_PROFILE="TwoOrgsOrdererGenesis"
 if [ "$DOCKER_PROFILES" = "2-nodes" ]; then
   export ORDERER_GENESIS_PROFILE="TwoOrgsOrdererGenesis"
 else
@@ -707,6 +673,43 @@ echo "SCRIPT_PATH: $SCRIPT_PATH"
 echo "NW CFG PATH: $NW_CFG_PATH"
 export APP_ROOT=$APP_ROOT
 
+# PORTS
+
+for ii in $(seq 1 ${NUM_ORGS}); do
+    export "N1_CA_ORG${ii}_PORT"=$((7054 + ($ii-1)*10))
+    port=$(bash -c "echo \$N1_CA_ORG${ii}_PORT")
+    echo N1_CA_ORG${ii}_PORT $port
+done
+export N1_CA_ORDERER_PORT=${N1_CA_ORDERER_PORT:-9054}
+export N1_CHAINCODELISTEN_PORT=${N1_CHAINCODELISTEN_PORT:-7052}
+export N1_COUCHDB0_PORT=${N1_COUCHDB0_PORT:-7084}
+export N1_COUCHDB1_PORT=${N1_COUCHDB1_PORT:-7094}
+export N1_ORDERER_PORT=${N1_ORDERER_PORT:-7050}
+for ii in $(seq 1 ${NUM_ORGS}); do
+    export "N1_PEER_ORG${ii}_PORT"=$((7051 + ($ii-1)*10))
+    port=$(bash -c "echo \$N1_PEER_ORG${ii}_PORT")
+    echo N1_PEER_ORG${ii}_PORT $port
+done
+
+
+for ii in $(seq 1 ${NUM_ORGS}); do
+    export "N2_CA_ORG${ii}_PORT"=$((5054 + ($ii-1)*10))
+    port=$(bash -c "echo \$N2_CA_ORG${ii}_PORT")
+    echo N2_CA_ORG${ii}_PORT $port
+done
+export N2_CA_ORDERER_PORT=${N2_CA_ORDERER_PORT:-8054}
+export N2_CHAINCODELISTEN_PORT=${N2_CHAINCODELISTEN_PORT:-9052}
+export N2_COUCHDB0_PORT=${N2_COUCHDB0_PORT:-9084}
+export N2_COUCHDB1_PORT=${N2_COUCHDB1_PORT:-9094}
+export N2_ORDERER_PORT=${N2_ORDERER_PORT:-9050}
+for ii in $(seq 1 ${NUM_ORGS}); do
+    export "N2_PEER_ORG${ii}_PORT"=$((9051 + ($ii-1)*10))
+    port=$(bash -c "echo \$N2_PEER_ORG${ii}_PORT")
+    echo N2_PEER_ORG${ii}_PORT $port
+done
+
+export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+
 echo "Setting up Environment"
 echo "==================================================================="
 echo "General"
@@ -718,12 +721,12 @@ if [ "${ROLE}" = "network1" ]; then
   echo " - Peer CouchDb1 Port                             : ${N1_COUCHDB1_PORT}"
   echo " - Orderer Port                                   : ${N1_ORDERER_PORT}"
   echo " - Orderer CA Port                                : ${N1_CA_ORDERER_PORT}"
-  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+  for ii in $(seq 1 ${NUM_ORGS}); do
       port=$(bash -c "echo \$N1_CA_ORG${ii}_PORT")
       echo " - CA Org${ii} Port                                   : ${port}"
       export "CA_ORG${ii}_PORT"=$port
   done
-  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+  for ii in $(seq 1 ${NUM_ORGS}); do
       port=$(bash -c "echo \$N1_PEER_ORG${ii}_PORT")
       echo " - Peer Org${ii} Port                                 : ${port}"
       export "PEER_ORG${ii}_PORT"=$port
@@ -740,12 +743,12 @@ else
   echo " - Peer CouchDb1 Port                             : ${N2_COUCHDB1_PORT}"
   echo " - Orderer Port                                   : ${N2_ORDERER_PORT}"
   echo " - Orderer CA Port                                : ${N2_CA_ORDERER_PORT}"
-  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+  for ii in $(seq 1 ${NUM_ORGS}); do
       port=$(bash -c "echo \$N2_CA_ORG${ii}_PORT")
       echo " - CA Org${ii} Port                                   : ${port}"
       export "CA_ORG${ii}_PORT"=$port
   done
-  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+  for ii in $(seq 1 ${NUM_ORGS}); do
       port=$(bash -c "echo \$N2_PEER_ORG${ii}_PORT")
       echo " - Peer Org${ii} Port                                 : ${port}"
       export "PEER_ORG${ii}_PORT"=$port
@@ -808,7 +811,7 @@ if [ $ROLE == "network1" ]; then
   rm -f docker.env
   cat base.env network1.env > network1.tmp.env
   echo "" >> network1.tmp.env
-  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+  for ii in $(seq 1 ${NUM_ORGS}); do
       echo "PEER_ORG${ii}_PORT=\${N1_PEER_ORG${ii}_PORT}" >> network1.tmp.env
       echo "CA_ORG${ii}_PORT=\${N1_CA_ORG${ii}_PORT}" >> network1.tmp.env
   done
@@ -825,7 +828,7 @@ elif [ $ROLE == "network2" ]; then
   rm -f docker.env
   cat base.env network2.env > network2.tmp.env
   echo "" >> network2.tmp.env
-  for ii in $(seq 1 ${MAX_NUM_ORGS}); do
+  for ii in $(seq 1 ${NUM_ORGS}); do
       echo "PEER_ORG${ii}_PORT=\${N2_PEER_ORG${ii}_PORT}" >> network2.tmp.env
       echo "CA_ORG${ii}_PORT=\${N2_CA_ORG${ii}_PORT}" >> network2.tmp.env
   done

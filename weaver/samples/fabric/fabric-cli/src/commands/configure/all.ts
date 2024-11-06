@@ -64,9 +64,12 @@ const command: GluegunCommand = {
       logger.debug("Debugging is enabled");
     }
     let members = [global.__DEFAULT_MSPID__];
-    if (options["num-orgs"] === 2) {
-      members = [global.__DEFAULT_MSPID__, global.__DEFAULT_MSPID_ORG2__];
+    if (options["num-orgs"] > 1) {
+      for (let ii=2; ii <= options["num-orgs"]; ii++) {
+        members.push(`Org${ii}MSP`);
+      }
     }
+
     // for each network, generate network admin identity and IIN Agent identity (there's only one org per network)
     const networkAdminUser = "networkadmin";
     const iinAgentUser = "iinagent";

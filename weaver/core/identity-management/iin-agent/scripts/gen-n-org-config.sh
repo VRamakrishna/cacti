@@ -25,6 +25,8 @@ function gen_config() {
         | sed "s#<path-to-connection-profile>#/opt/iinagent/extra/connection-org${ORG}.docker.json#g" \
         | sed "s#Org1#Org${ORG}#g" \
         | sed "s#org1#org${ORG}#g" \
+        | sed "s#\"walletPath\": \"\"#\"walletPath\": \"/opt/iinagent/extra/wallet-iin-agent\"#g" \
+        | sed "s#\"local\": \"true\"#\"local\": \"false\"#g" \
         > $ROOT_DIR/configs-n/config-org${ORG}.json
 }
 
@@ -35,7 +37,9 @@ function gen_dnsconfig() {
         for org in $(seq 1 $NUM_ORGS); do
             gen_org_dns $ii $org | sed "s/^/\t\t/g" >> $ROOT_DIR/configs-n/dnsconfig.json
         done
-        echo -e "\t}," >> $ROOT_DIR/configs-n/dnsconfig.json
+        sfx=""
+        if [ "$ii" -ne "$NUM_NW" ]; then sfx=","; fi
+        echo -e "\t}$sfx" >> $ROOT_DIR/configs-n/dnsconfig.json
     done
     echo -e "}" >> $ROOT_DIR/configs-n/dnsconfig.json
 }
@@ -50,8 +54,10 @@ function gen_org_dns() {
 \t"endpoint": "'$endpoint'",
 \t"tls": "'$TLS'",
 \t"tlsCACertPath": "'$TLS_CERT_PATH'"
-},'
-    echo -e "$dnsconfig"
+}'
+    sfx=""
+    if [ "$ORG" -ne "$NUM_ORGS" ]; then sfx=","; fi
+    echo -e "$dnsconfig$sfx"
 }
 
 function gen_env() {

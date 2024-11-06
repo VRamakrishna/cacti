@@ -123,7 +123,7 @@ const command: GluegunCommand = {
         appChaincodeId,
         applicationFunction,
       );
-
+      console.time('INTEROP_CALL')
       await interopHelper(
         options["local-network"],
         await generateViewAddress(
@@ -140,6 +140,7 @@ const command: GluegunCommand = {
         options,
         print,
       );
+      console.timeEnd('INTEROP_CALL')
       process.exit();
     } catch (error) {
       print.error(`Error Interop Call: ${error}`);
