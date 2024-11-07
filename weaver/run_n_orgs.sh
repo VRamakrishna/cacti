@@ -1,10 +1,11 @@
-for i in $(seq 7 9); do
+for i in $(seq 10 10); do
+    echo $i
     pushd tests/network-setups/fabric/dev
     make start-interop-local PROFILE="$i-nodes"
     popd
 
     pushd core/identity-management/iin-agent
-    ./scripts/gen-n-org-config.sh $i /opt/gopath/src/github.com/VRamakrishna/cacti/weaver
+    ./scripts/gen-n-org-config.sh $i /mnt/oldubuntu/opt/gopath/src/github.com/VRamakrishna/cacti/weaver 
     make deploy-all PROFILE="$i-nodes"
     popd
 
@@ -25,7 +26,7 @@ for i in $(seq 7 9); do
     ./bin/fabric-cli configure all network1 network2 --num-orgs=$i
     bash scripts/dbe_init.sh $i
     sleep 310
-    bash run_perf_tests.sh "${i}orgs" 100
+    bash scripts/run_perf_tests.sh "${i}orgs" 100
     popd
 
     # CLEAN

@@ -632,7 +632,9 @@ done
 
 export IMAGE_TAG=${IMAGETAG}
 export CA_IMAGE_TAG=${CAIMAGETAG}
-NUM_ORGS=${DOCKER_PROFILES:0:1}
+NUM_ORGS="$( echo $DOCKER_PROFILES | sed -E 's/^([^-]*).*$/\1/g' )"
+echo "Starting network with $NUM_ORGS orgs in 2 secs..."
+sleep 2
 
 export CHANNEL_PROFILE="TwoOrgsChannel"
 if [ "$DOCKER_PROFILES" = "2-nodes" ]; then

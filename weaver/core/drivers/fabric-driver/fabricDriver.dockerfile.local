@@ -1,4 +1,4 @@
-ARG BUILD_TAG
+ARG BUILD_TAG=local
 
 # Local Build
 FROM node:16 AS builder-local
@@ -28,7 +28,7 @@ RUN deluser --remove-home node
 RUN addgroup -g 1000 relay
 RUN adduser -D -s /bin/sh -u 1000 -G relay relay
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 WORKDIR /driver/fabric
 
@@ -46,4 +46,4 @@ RUN chown -R relay:relay /driver/fabric
 USER relay
 
 ARG GIT_URL
-LABEL org.opencontainers.image.source ${GIT_URL}
+LABEL org.opencontainers.image.source=${GIT_URL}

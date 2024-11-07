@@ -14,4 +14,4 @@ COPY --from=builder /driver/corda/build/install/driver-corda /driver/corda/
 WORKDIR /driver/corda
 
 ARG GIT_URL
-LABEL org.opencontainers.image.source ${GIT_URL}
+LABEL org.opencontainers.image.source=${GIT_URL}

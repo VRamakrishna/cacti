@@ -4,7 +4,8 @@ MODE=${1:-"up"}
 PROFILES=${2:-"1-node"}
 NUM_NW=${3:-"2"}
 
-NUM_ORGS=${PROFILES:0:1}
+NUM_ORGS="$( echo $PROFILES | sed -E 's/^([^-]*).*$/\1/g' )"
+echo "Starting iin-agents with $NUM_ORGS nodes in 2 secs..."
 
 env_dir="envs"
 if [ "$NUM_ORGS" -gt 2 ]; then

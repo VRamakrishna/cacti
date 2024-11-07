@@ -26,7 +26,7 @@ RUN deluser --remove-home node
 RUN addgroup -g 1000 iinagent
 RUN adduser -D -s /bin/sh -u 1000 -G iinagent iinagent
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 WORKDIR /opt/iinagent
 
@@ -43,4 +43,4 @@ RUN chown -R iinagent:iinagent /opt/iinagent
 USER iinagent
 
 ARG GIT_URL
-LABEL org.opencontainers.image.source ${GIT_URL}
+LABEL org.opencontainers.image.source=${GIT_URL}
