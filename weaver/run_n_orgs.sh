@@ -16,7 +16,9 @@ for i in $(seq 10 10); do
     popd
 
     pushd core/relay
+    make convert-compose-method2
     make start-server COMPOSE_ARG='--env-file docker/testnet-envs/.env.n1' && make start-server COMPOSE_ARG='--env-file docker/testnet-envs/.env.n2'
+    make convert-compose-method1
     popd
 
     pushd samples/fabric/fabric-cli

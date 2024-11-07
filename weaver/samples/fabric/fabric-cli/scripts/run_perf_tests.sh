@@ -5,7 +5,7 @@ then
 fi
 
 OUTDIR=perf_tests_conf_data_sharing/$1
-mkdir -p 
+mkdir -p $OUTDIR 
 for i in $(seq 1 $2);
 do
     echo "$i"

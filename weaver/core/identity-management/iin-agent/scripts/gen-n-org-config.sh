@@ -22,9 +22,9 @@ function gen_config() {
     ORG=$1
     TEMPLATE_PATH="${ROOT_DIR}/../src/${DLT_TYPE}-ledger/config.json.template"
     cat $TEMPLATE_PATH \
-        | sed "s#<path-to-connection-profile>#/opt/iinagent/extra/connection-org${ORG}.docker.json#g" \
         | sed "s#Org1#Org${ORG}#g" \
         | sed "s#org1#org${ORG}#g" \
+        | sed "s#<path-to-connection-profile>#/opt/iinagent/extra/connection-org${ORG}.docker.json#g" \
         | sed "s#\"walletPath\": \"\"#\"walletPath\": \"/opt/iinagent/extra/wallet-iin-agent\"#g" \
         | sed "s#\"local\": \"true\"#\"local\": \"false\"#g" \
         > $ROOT_DIR/configs-n/config-org${ORG}.json
