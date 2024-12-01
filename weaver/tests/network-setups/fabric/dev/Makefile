@@ -66,19 +66,23 @@ start-interop-network2-local: setup-interop-cc-local start-network2-local setup-
 
 .PHONY: setup-interop-network1
 setup-interop-network1: setup-interop-cc
-	./network.sh deployCC -ch interop -nw network1 -p $(PROFILE) -pdc collections_config.json
+	./network.sh deployCC -ch interop -nw network1 -p $(PROFILE)
+	#./network.sh deployCC -ch interop -nw network1 -p $(PROFILE) -pdc collections_config.json
 
 .PHONY: setup-interop-network1-local
 setup-interop-network1-local: setup-interop-cc-local
-	./network.sh deployCC -ch interop -nw network1 -p $(PROFILE) -pdc collections_config.json
+	./network.sh deployCC -ch interop -nw network1 -p $(PROFILE)
+	#./network.sh deployCC -ch interop -nw network1 -p $(PROFILE) -pdc collections_config.json
 
 .PHONY: setup-interop-network2
 setup-interop-network2: setup-interop-cc
-	./network.sh deployCC -ch interop -nw network2 -p $(PROFILE) -pdc collections_config.json
+	./network.sh deployCC -ch interop -nw network2 -p $(PROFILE)
+	#./network.sh deployCC -ch interop -nw network2 -p $(PROFILE) -pdc collections_config.json
 
 .PHONY: setup-interop-network2-local
 setup-interop-network2-local: setup-interop-cc-local
-	./network.sh deployCC -ch interop -nw network2 -p $(PROFILE) -pdc collections_config.json
+	./network.sh deployCC -ch interop -nw network2 -p $(PROFILE)
+	#./network.sh deployCC -ch interop -nw network2 -p $(PROFILE) -pdc collections_config.json
 
 .PHONY: setup-interop-cc
 setup-interop-cc:

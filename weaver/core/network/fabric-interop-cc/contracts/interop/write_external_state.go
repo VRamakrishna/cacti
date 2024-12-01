@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
@@ -205,6 +206,7 @@ func (s *SmartContract) ParseAndValidateView(ctx contractapi.TransactionContextI
 // 1. Verify Proofs that are returned
 // 2. Call application chaincode
 func (s *SmartContract) WriteExternalState(ctx contractapi.TransactionContextInterface, applicationID string, applicationChannel string, applicationFunction string, applicationArgs []string, argIndicesForSubstitution []int, addresses []string, b64ViewProtos []string, b64ViewContents [][]string) error {
+	funcStartTime := time.Now()
 	if len(argIndicesForSubstitution) != len(addresses) {
 		return logThenErrorf("Number of argument indices for substitution (%d) does not match number of addresses (%d)", len(argIndicesForSubstitution), len(addresses))
 	}
@@ -239,6 +241,8 @@ func (s *SmartContract) WriteExternalState(ctx contractapi.TransactionContextInt
 	if pbResp.Status != shim.OK {
 		return logThenErrorf("Application chaincode invoke error: %s", string(pbResp.GetMessage()))
 	}
+	funcExecutionTime := time.Since(funcStartTime)
+	fmt.Printf("WRITE_EXTERNAL_STATE: %+v\n", funcExecutionTime)
 	return nil
 }
 

@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hyperledger/cacti/weaver/common/protos-go/v2/common"
 	wutils "github.com/hyperledger/cacti/weaver/core/network/fabric-interop-cc/libs/utils/v2"
@@ -30,6 +31,7 @@ import (
 // 3. Checks the access control policy for the requester and view address is met
 // 4. Calls application chaincode
 func (s *SmartContract) HandleExternalRequest(ctx contractapi.TransactionContextInterface, b64QueryBytes string) (string, error) {
+	funcStartTime := time.Now()
 	queryBytes, err := base64.StdEncoding.DecodeString(b64QueryBytes)
 	if err != nil {
 		return "", logThenErrorf("Unable to base64 decode data: %s", err.Error())
@@ -40,6 +42,8 @@ func (s *SmartContract) HandleExternalRequest(ctx contractapi.TransactionContext
 		return "", logThenErrorf("Unable to unmarshal query: %s", err.Error())
 	}
 	resp, err := handleRequest(s, ctx, query, query.Address)
+	funcExecutionTime := time.Since(funcStartTime)
+	fmt.Printf("HANDLE_EXTERNAL_REQUEST: %+v\n", funcExecutionTime)
 	return resp, err
 }
 

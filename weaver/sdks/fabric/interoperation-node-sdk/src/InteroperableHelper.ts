@@ -715,6 +715,7 @@ const interopFlow = async (
       Buffer.from(requestResponse.view.serializeBinary()).toString("base64"),
     );
     computedAddresses.push(requestResponse.address);
+    console.time('VIEW_EXTRACTION_AND_VALIDATION');
     if (confidential && encryptionMechanism === cryptoPb.EncryptionMechanism.ECIES) {
       const respData = getResponseDataFromView(
         requestResponse.view,
@@ -747,6 +748,7 @@ const interopFlow = async (
     endorsingOrgs,
     gateway,
   );
+  console.timeEnd('VIEW_EXTRACTION_AND_VALIDATION');
   return { views, result };
 };
 
