@@ -50,7 +50,7 @@ type Ciphertext struct {
 }
 
 func GetPublicKeyAndParamsFromDistPublicParams(dpp *DistPublicParameters) (PublicKey, *PublicParameters, error) {
-	if dpp == nil || len(dpp.P) == 0 || len(dpp.H) == 0 || len(dpp.T) == 0 || dpp.N <= 0 || dpp.P[0] == nil || dpp.H[0] == nil || dpp.T[0] == nil || len(dpp.P) != 2 * dpp.N || len(dpp.H) != dpp.N + 1 || len(dpp.T) != dpp.N + 1 {
+	if dpp == nil || len(dpp.P) == 0 || len(dpp.H) == 0 || len(dpp.T) == 0 || dpp.N <= 0 || dpp.P[0] == nil || dpp.H[0] == nil || dpp.T[0] == nil || len(dpp.P) != 2*dpp.N || len(dpp.H) != dpp.N+1 || len(dpp.T) != dpp.N+1 {
 		return nil, nil, errors.New(fmt.Sprintf("One or more attributes in DPP is missing or invalid"))
 	}
 
@@ -61,13 +61,13 @@ func GetPublicKeyAndParamsFromDistPublicParams(dpp *DistPublicParameters) (Publi
 	publicParams.N = dpp.N
 	publicParams.FirstHalf = make([]*math.G1, dpp.N)
 	publicParams.FirstHalfInG2 = make([]*math.G2, dpp.N)
-	publicParams.SecondHalf = make([]*math.G1, dpp.N - 1)
+	publicParams.SecondHalf = make([]*math.G1, dpp.N-1)
 	for i := 0; i < dpp.N; i++ {
-		publicParams.FirstHalf[i] = dpp.P[i + 1]
-		publicParams.FirstHalfInG2[i] = dpp.H[i + 1]
+		publicParams.FirstHalf[i] = dpp.P[i+1]
+		publicParams.FirstHalfInG2[i] = dpp.H[i+1]
 	}
-	for i := 0; i < dpp.N - 1; i++ {
-		publicParams.SecondHalf[i] = dpp.P[i + dpp.N + 1]
+	for i := 0; i < dpp.N-1; i++ {
+		publicParams.SecondHalf[i] = dpp.P[i+dpp.N+1]
 	}
 
 	publicKey := dpp.T[0]
@@ -131,7 +131,7 @@ func KeyGen(pp *PublicParameters) (DecryptionKeys, PublicKey, error) {
 func DistKeyGen(dpp *DistPublicParameters, index int, secret *math.Zr) DecryptionKey {
 	DK := dpp.T[index]
 	// Multiple with 'secret' 'index' times
-	for i := 0 ; i < index ; i++ {
+	for i := 0; i < index; i++ {
 		DK = DK.Mul(secret)
 	}
 
@@ -185,8 +185,9 @@ func Decrypt(raw []byte, dk DecryptionKey, target []int, index int, pp *PublicPa
 		}
 	}
 	U.Add(dk)
-	T := curve.Pairing(ciphertext.C0, U)
-	T.Inverse()
+	UPrime := curve.NewG1()
+	UPrime.Sub(U)
+	T := curve.Pairing(ciphertext.C0, UPrime)
 	S.Mul(T)
 	S = curve.FExp(S)
 
@@ -247,4 +248,39 @@ func symDecrypt(ciphertext []byte, K *math.Gt) ([]byte, error) {
 		return nil, err
 	}
 	return plaintext, nil
+}
+
+func ComputeProduct(target []int, index int, pp *PublicParameters) *math.G1 {
+	curve := math.Curves[pp.CurveID]
+	U := curve.NewG1()
+	for i := 0; i < len(target); i++ {
+		if target[i] == index {
+			continue
+		}
+		j := pp.N - target[i] + index
+		if j < pp.N {
+			U.Add(pp.FirstHalf[j])
+		} else {
+			U.Add(pp.SecondHalf[index-target[i]-1])
+		}
+	}
+	return U
+}
+
+func DecryptWithCachedProduct(raw []byte, dk DecryptionKey, index int, cachedProduct *math.G1, pp *PublicParameters) ([]byte, error) {
+	ciphertext := &Ciphertext{}
+	err := json.Unmarshal(raw, ciphertext)
+	if err != nil {
+		return nil, err
+	}
+	curve := math.Curves[pp.CurveID]
+	S := curve.Pairing(pp.FirstHalfInG2[index-1], ciphertext.C1)
+	cachedProduct.Add(dk)
+	U := curve.NewG1()
+	U.Sub(cachedProduct)
+	T := curve.Pairing(ciphertext.C0, U)
+	S.Mul(T)
+	S = curve.FExp(S)
+
+	return symDecrypt(ciphertext.Encryption, S)
 }
