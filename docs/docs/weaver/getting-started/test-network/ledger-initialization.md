@@ -82,14 +82,9 @@ Finally, to prepare both `network1` and `network2` for interoperation, run:
 ./bin/fabric-cli configure all network1 network2
 ```
 
-If Fabric networks were launched with 2 organizations, run:
+Instead, if you launched only one of the two Fabric networks, run the following after replacing `<network-id>` with either `network1` or `network2`:
 ```bash
-./bin/fabric-cli configure all network1 network2 --num-orgs=2
-```
-
-Instead, if you launched only one of the two Fabric networks, run the following after replacing `<network-id>` with either `network1` or `network2`, and `<1/2>` with number of organizations in the network:
-```bash
-./bin/fabric-cli configure all <network-id> --num-orgs=<1/2>
+./bin/fabric-cli configure all <network-id>
 ```
 
 **Wait for at least 5 minutes before moving on to the next step (testing interoperability modes) to allow the networks' IIN Agents to sync their respective memberships (which occur after every 5 minutes by default).**

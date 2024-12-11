@@ -63,12 +63,6 @@ const command: GluegunCommand = {
       logger.level = "debug";
       logger.debug("Debugging is enabled");
     }
-    let members = [global.__DEFAULT_MSPID__];
-    if (options["num-orgs"] > 1) {
-      for (let ii=2; ii <= options["num-orgs"]; ii++) {
-        members.push(`Org${ii}MSP`);
-      }
-    }
 
     // for each network, generate network admin identity and IIN Agent identity (there's only one org per network)
     const networkAdminUser = "networkadmin";
@@ -172,7 +166,13 @@ const command: GluegunCommand = {
     // 2. Add default data
     for (const network of array) {
       // ADD DATA
-      const connProfilePath = getNetworkConfig(network).connProfilePath;
+      const { connProfilePath, numOrgs } = getNetworkConfig(network).connProfilePath;
+      let members = [global.__DEFAULT_MSPID__];
+      if (numOrgs > 1) {
+        for (let ii=2; ii <= numOrgs; ii++) {
+          members.push(`Org${ii}MSP`);
+        }
+      }
       if (!connProfilePath) {
         print.error(
           `Please use a valid --local-network. No valid environment found for ${network} `,

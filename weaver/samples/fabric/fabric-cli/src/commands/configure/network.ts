@@ -62,11 +62,13 @@ const command: GluegunCommand = {
       logger.level = "debug";
       logger.debug("Debugging is enabled");
     }
+    const { numOrgs } = getNetworkConfig(network).connProfilePath;
     let members = [global.__DEFAULT_MSPID__];
-    if (options["num-orgs"] === 2) {
-      members = [global.__DEFAULT_MSPID__, global.__DEFAULT_MSPID_ORG2__];
+      if (numOrgs > 1) {
+      for (let ii=2; ii <= numOrgs; ii++) {
+        members.push(`Org${ii}MSP`);
+      }
     }
-
     // Create wallet credentials
     const credentialFolderPath = getCredentialPath();
     const networkNames = fs
