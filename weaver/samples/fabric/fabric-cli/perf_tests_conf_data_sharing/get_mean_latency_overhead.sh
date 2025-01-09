@@ -20,16 +20,19 @@ fi
 PT_L_FILE=latency.plaintext.$1
 PT_VG_FILE=latency.plaintext.vg.$1
 PT_VV_FILE=latency.plaintext.vv.$1
+PT_VEV_FILE=latency.plaintext.vev.$1
 PT_HER_FILE=latency.plaintext.her.$1
 PT_WES_FILE=latency.plaintext.wes.$1
 CD_L_FILE=latency.conf_dbe.$1
 CD_VG_FILE=latency.conf_dbe.vg.$1
 CD_VV_FILE=latency.conf_dbe.vv.$1
+CD_VEV_FILE=latency.conf_dbe.vev.$1
 CD_HER_FILE=latency.conf_dbe.her.$1
 CD_WES_FILE=latency.conf_dbe.wes.$1
 CE_L_FILE=latency.conf_ecies.$1
 CE_VG_FILE=latency.conf_ecies.vg.$1
 CE_VV_FILE=latency.conf_ecies.vv.$1
+CE_VEV_FILE=latency.conf_ecies.vev.$1
 CE_HER_FILE=latency.conf_ecies.her.$1
 CE_WES_FILE=latency.conf_ecies.wes.$1
 PLAINTEXT_LATENCY=$(computeAverage $PT_L_FILE)
@@ -38,6 +41,8 @@ PLAINTEXT_VIEW_GEN_LATENCY=$(computeAverage $PT_VG_FILE)
 echo "MEAN view generation latency for end-to-end plaintext data sharing: "$PLAINTEXT_VIEW_GEN_LATENCY" milliseconds"
 PLAINTEXT_VIEW_VAL_LATENCY=$(computeAverage $PT_VV_FILE)
 echo "MEAN view validation latency for end-to-end plaintext data sharing: "$PLAINTEXT_VIEW_VAL_LATENCY" milliseconds"
+PLAINTEXT_VIEW_EXTR_VAL_LATENCY=$(computeAverage $PT_VEV_FILE)
+echo "MEAN view extraction and validation latency for end-to-end plaintext data sharing: "$PLAINTEXT_VIEW_EXTR_VAL_LATENCY" milliseconds"
 PLAINTEXT_HANDLE_EXTERNAL_REQUEST_LATENCY=$(computeAverage $PT_HER_FILE)
 echo "MEAN handle_external_request latency for end-to-end plaintext data sharing: "$PLAINTEXT_HANDLE_EXTERNAL_REQUEST_LATENCY" milliseconds"
 PLAINTEXT_WRITE_EXTERNAL_STATE_LATENCY=$(computeAverage $PT_WES_FILE)
@@ -48,6 +53,8 @@ CONF_DBE_VIEW_GEN_LATENCY=$(computeAverage $CD_VG_FILE)
 echo "MEAN view generation latency for end-to-end confidential data sharing with DBE: "$CONF_DBE_VIEW_GEN_LATENCY" milliseconds"
 CONF_DBE_VIEW_VAL_LATENCY=$(computeAverage $CD_VV_FILE)
 echo "MEAN view validation latency for end-to-end confidential data sharing with DBE: "$CONF_DBE_VIEW_VAL_LATENCY" milliseconds"
+CONF_DBE_VIEW_EXTR_VAL_LATENCY=$(computeAverage $CD_VEV_FILE)
+echo "MEAN view extraction and validation latency for end-to-end confidential data sharing with DBE: "$CONF_DBE_VIEW_EXTR_VAL_LATENCY" milliseconds"
 CONF_DBE_HANDLE_EXTERNAL_REQUEST_LATENCY=$(computeAverage $CD_HER_FILE)
 echo "MEAN handle_external_request latency for end-to-end confidential data sharing with DBE: "$CONF_DBE_HANDLE_EXTERNAL_REQUEST_LATENCY" milliseconds"
 CONF_DBE_WRITE_EXTERNAL_STATE_LATENCY=$(computeAverage $CD_WES_FILE)
@@ -58,6 +65,8 @@ CONF_ECIES_VIEW_GEN_LATENCY=$(computeAverage $CE_VG_FILE)
 echo "MEAN view generation latency for end-to-end confidential data sharing with ECIES: "$CONF_ECIES_VIEW_GEN_LATENCY" milliseconds"
 CONF_ECIES_VIEW_VAL_LATENCY=$(computeAverage $CE_VV_FILE)
 echo "MEAN view validation latency for end-to-end confidential data sharing with ECIES: "$CONF_ECIES_VIEW_VAL_LATENCY" milliseconds"
+CONF_ECIES_VIEW_EXTR_VAL_LATENCY=$(computeAverage $CE_VEV_FILE)
+echo "MEAN view extraction and validation latency for end-to-end confidential data sharing with ECIES: "$CONF_ECIES_VIEW_EXTR_VAL_LATENCY" milliseconds"
 CONF_ECIES_HANDLE_EXTERNAL_REQUEST_LATENCY=$(computeAverage $CE_HER_FILE)
 echo "MEAN handle_external_request latency for end-to-end confidential data sharing with ECIES: "$CONF_ECIES_HANDLE_EXTERNAL_REQUEST_LATENCY" milliseconds"
 CONF_ECIES_WRITE_EXTERNAL_STATE_LATENCY=$(computeAverage $CE_WES_FILE)
@@ -89,6 +98,16 @@ OVERHEAD_DBE_VV=${OVERHEAD_DBE_VV:0:7}
 OVERHEAD_ECIES_VV=$(jq -n $CONF_ECIES_VIEW_VAL_LATENCY-$PLAINTEXT_VIEW_VAL_LATENCY)
 OVERHEAD_ECIES_VV=${OVERHEAD_ECIES_VV:0:7}
 echo "    "$PLAINTEXT_VIEW_VAL_LATENCY"    |     "$CONF_DBE_VIEW_VAL_LATENCY"    |      "$CONF_ECIES_VIEW_VAL_LATENCY"     |    "$OVERHEAD_DBE_VV"   |    "$OVERHEAD_ECIES_VV
+
+echo "========================================================================================================"
+echo " View Extr & Val (PT) | View Extr & Val (DBE) | View Extr & Val (ECIES) | DBE Overhead | ECIES Overhead"
+echo "----------------------|-----------------------|-------------------------|--------------|----------------"
+OVERHEAD_DBE_VEV=$(jq -n $CONF_DBE_VIEW_EXTR_VAL_LATENCY-$PLAINTEXT_VIEW_EXTR_VAL_LATENCY)
+OVERHEAD_DBE_VEV=${OVERHEAD_DBE_VEV:0:7}
+OVERHEAD_ECIES_VEV=$(jq -n $CONF_ECIES_VIEW_EXTR_VAL_LATENCY-$PLAINTEXT_VIEW_EXTR_VAL_LATENCY)
+OVERHEAD_ECIES_VEV=${OVERHEAD_ECIES_VEV:0:7}
+echo "    "$PLAINTEXT_VIEW_EXTR_VAL_LATENCY"    |     "$CONF_DBE_VIEW_EXTR_VAL_LATENCY"    |      "$CONF_ECIES_VIEW_EXTR_VAL_LATENCY"     |    "$OVERHEAD_DBE_VEV"   |    "$OVERHEAD_ECIES_VEV
+
 echo "========================================================================================="
 echo " Handle Ext (PT) | Handle Ext (DBE) | Handle Ext (ECIES) | DBE Overhead | ECIES Overhead"
 echo "-----------------|------------------|--------------------|--------------|----------------"

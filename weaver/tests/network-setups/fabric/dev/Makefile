@@ -138,12 +138,21 @@ remove-network2:
 	./network.sh clean -nw network2 -p $(PROFILE)
 	rm -rf ../shared/network2/wallet/*.id
 
-.PHONY: clean
-clean:	remove
+.PHONY: clean-shared
+clean-shared:
 	+docker system prune -f || true
 	+rm -rf config || true
 	+chmod -R 755 ../shared/chaincode/interop
 	+rm -rf ../shared/chaincode/*
+
+.PHONY: clean-network1
+clean-network1:	remove-network1 clean-shared
+
+.PHONY: clean-network2
+clean-network2:	remove-network2 clean-shared
+
+.PHONY: clean
+clean:	remove clean-shared
 
 .PHONY: clean-all	
 clean-all: clean

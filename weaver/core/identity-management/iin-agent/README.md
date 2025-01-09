@@ -140,16 +140,23 @@ Run `npm run dev` to start the agent in your terminal. (_Note_: we will support 
 Only for docker based deployment
 
 ### Generate env and configs
+./scripts/gen-n-org-config.sh -nw 2 -nol 3 1 -p /opt/gopath/src/github.com/VRamakrishna/cacti/weaver
 
+If deploying iin-agents with same number of orgs in all the networks use this:
 ```bash
-./scripts/gen-n-org-config.sh <NUM-ORGS> <PATH-TO-WEAVER>
+./scripts/gen-n-org-config.sh -nw <NUM-NETWORKS> -no <NUM-ORGS> -p <PATH-TO-WEAVER>
+```
+
+If deploying iin-agents with different number of orgs in the networks use this:
+```bash
+./scripts/gen-n-org-config.sh -nw <NUM-NETWORKS> -nol <SPACE-SEPARATED-LIST-OF-NUM-ORGS> -p <PATH-TO-WEAVER>
 ```
 
 The files will be generated in `docker-testnet/configs-n` and `docker-testnet/envs-n`.
 
-If using locally built image, pass the image name as the last parameter, like:
+Extra options can be passed like:
 ```bash
-./scripts/gen-n-org-config.sh <NUM-ORGS> <PATH-TO-WEAVER> <IMAGE-NAME>
+...  -o <IMAGE-NAME> <DLT-TYPE> <TLS-ENABLED>
 ```
 
 To delete these files, run:

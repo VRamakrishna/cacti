@@ -5,7 +5,7 @@
  */
 
 import { GluegunCommand } from "gluegun";
-import { commandHelp } from "../../helpers/helpers";
+import { commandHelp, getNetworkConfig } from "../../helpers/helpers";
 import {
   getCredentialPath,
   enrollAndRecordWalletIdentity,
@@ -62,7 +62,7 @@ const command: GluegunCommand = {
       logger.level = "debug";
       logger.debug("Debugging is enabled");
     }
-    const { numOrgs } = getNetworkConfig(network).connProfilePath;
+    const { numOrgs } = getNetworkConfig(options["local-network"]);
     let members = [global.__DEFAULT_MSPID__];
       if (numOrgs > 1) {
       for (let ii=2; ii <= numOrgs; ii++) {

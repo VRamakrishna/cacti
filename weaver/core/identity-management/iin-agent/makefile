@@ -71,11 +71,21 @@ deploy:
 stop:
 	docker compose $(COMPOSE_ARG) down
 
-deploy-all:
-	./scripts/deploy-all.sh up $(PROFILE)
+deploy-all-network1:
+	./scripts/deploy-all.sh up $(PROFILE) 1
 
-stop-all:
-	./scripts/deploy-all.sh down $(PROFILE)
+deploy-all-network2:
+	./scripts/deploy-all.sh up $(PROFILE) 2
+
+deploy-all: deploy-all-network1 deploy-all-network2
+
+stop-all-network1:
+	./scripts/deploy-all.sh down $(PROFILE) 1
+
+stop-all-network2:
+	./scripts/deploy-all.sh down $(PROFILE) 2
+
+stop-all: stop-all-network1 stop-all-network2
 
 re-deploy: stop deploy
 	
@@ -84,8 +94,8 @@ test-local: build-local
 
 clean:
 	rm -rf node_modules package-lock.json out
-	./scripts/gen-n-org-config.sh clean
+	./scripts/gen-n-org-config.sh -m clean
 	
 clean-local:
 	rm -rf node_modules package-lock.json out protos-js cacti-weaver-sdk-fabric
-	./scripts/gen-n-org-config.sh clean
+	./scripts/gen-n-org-config.sh -m clean

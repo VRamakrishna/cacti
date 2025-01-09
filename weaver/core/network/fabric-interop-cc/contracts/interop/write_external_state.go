@@ -75,6 +75,7 @@ func ExtractAndValidateDataFromView(s *SmartContract, ctx contractapi.Transactio
 
 	var payloadConfidential bool
 	var viewPayload []byte
+	funcStartTime := time.Now()
 	for i, interopPayload := range interopPayloadList {
 		// If view data is encrypted, match it to supplied decrypted data using the hash in the view payload
 		if interopPayload.Confidential {
@@ -170,6 +171,8 @@ func ExtractAndValidateDataFromView(s *SmartContract, ctx contractapi.Transactio
 			}
 		}
 	}
+	funcExecutionTime := time.Since(funcStartTime)
+	fmt.Printf("EXTRACT_EXTERNAL_STATE: %+v\n", funcExecutionTime)
 	return viewPayload, nil
 }
 

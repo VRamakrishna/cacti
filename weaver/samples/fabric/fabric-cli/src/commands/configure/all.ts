@@ -166,7 +166,7 @@ const command: GluegunCommand = {
     // 2. Add default data
     for (const network of array) {
       // ADD DATA
-      const { connProfilePath, numOrgs } = getNetworkConfig(network).connProfilePath;
+      const { connProfilePath, numOrgs } = getNetworkConfig(network);
       let members = [global.__DEFAULT_MSPID__];
       if (numOrgs > 1) {
         for (let ii=2; ii <= numOrgs; ii++) {

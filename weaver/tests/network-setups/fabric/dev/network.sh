@@ -637,14 +637,18 @@ echo "Starting network with $NUM_ORGS orgs in 2 secs..."
 sleep 2
 
 export CHANNEL_PROFILE="TwoOrgsChannel"
-if [ "$DOCKER_PROFILES" = "2-nodes" ]; then
+if [ "$DOCKER_PROFILES" = "1-node" ]; then
+  export CHANNEL_PROFILE="OneOrgChannel"
+elif [ "$DOCKER_PROFILES" = "2-nodes" ]; then
   export CHANNEL_PROFILE="TwoOrgsChannel"
 else
   export CHANNEL_PROFILE="NOrgsChannel"
 fi
 
 export ORDERER_GENESIS_PROFILE="TwoOrgsOrdererGenesis"
-if [ "$DOCKER_PROFILES" = "2-nodes" ]; then
+if [ "$DOCKER_PROFILES" = "1-node" ]; then
+  export ORDERER_GENESIS_PROFILE="OneOrgOrdererGenesis"
+elif [ "$DOCKER_PROFILES" = "2-nodes" ]; then
   export ORDERER_GENESIS_PROFILE="TwoOrgsOrdererGenesis"
 else
   export ORDERER_GENESIS_PROFILE="NOrgsOrdererGenesis"
