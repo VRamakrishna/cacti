@@ -28,7 +28,7 @@ import {
   LogLevelDesc,
   LoggerProvider,
   Logger,
-} from "@hyperledger/cactus-common";
+} from "@hyperledger-cacti/cactus-common";
 
 import * as path from "node:path";
 import * as os from "node:os";
@@ -47,8 +47,8 @@ import {
 } from "@aries-framework/indy-vdr";
 import { AskarModule } from "@aries-framework/askar";
 import { agentDependencies } from "@aries-framework/node";
-import { ariesAskar } from "@hyperledger/aries-askar-nodejs";
-import { indyVdr } from "@hyperledger/indy-vdr-nodejs";
+import { ariesAskar } from "@hyperledger-cacti/aries-askar-nodejs";
+import { indyVdr } from "@hyperledger-cacti/indy-vdr-nodejs";
 
 const TEST_WALLET_PATH = path.join(
   os.tmpdir(),

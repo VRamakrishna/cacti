@@ -1,5 +1,5 @@
 {
-  "name": "@hyperledger/cactus-test-tooling",
+  "name": "@hyperledger-cacti/cactus-test-tooling",
   "version": "2.1.0",
   "description": "Swiss army knife for test development. Main goal is to make pulling up test/dummy ledgers on the fly for tests easy, especially for test cases that are about simulating clean ledger state or wiped ledger state, etc.",
   "keywords": [
@@ -65,7 +65,7 @@
     "webpack:dev:web": "webpack --env=dev --target=web --config ../../webpack.config.js"
   },
   "dependencies": {
-    "@hyperledger/cactus-common": "2.1.0",
+    "@hyperledger-cacti/cactus-common": "2.1.0",
     "axios": "1.8.4",
     "compare-versions": "3.6.0",
     "dockerode": "3.3.0",
@@ -103,8 +103,8 @@
     "@aries-framework/core": "0.5.0-alpha.97",
     "@aries-framework/indy-vdr": "0.5.0-alpha.97",
     "@aries-framework/node": "0.5.0-alpha.97",
-    "@hyperledger/aries-askar-nodejs": "0.2.3",
-    "@hyperledger/indy-vdr-nodejs": "0.2.3",
+    "@hyperledger-cacti/aries-askar-nodejs": "0.2.3",
+    "@hyperledger-cacti/indy-vdr-nodejs": "0.2.3",
     "@types/dockerode": "3.2.7",
     "@types/esm": "3.2.0",
     "@types/fs-extra": "11.0.4",

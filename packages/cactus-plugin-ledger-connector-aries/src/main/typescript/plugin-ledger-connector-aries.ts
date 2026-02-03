@@ -22,7 +22,7 @@ import {
   AutoAcceptCredential,
 } from "@aries-framework/core";
 import { agentDependencies, HttpInboundTransport } from "@aries-framework/node";
-import { ariesAskar } from "@hyperledger/aries-askar-nodejs";
+import { ariesAskar } from "@hyperledger-cacti/aries-askar-nodejs";
 import {
   IndyVdrAnonCredsRegistry,
   IndyVdrIndyDidRegistrar,
@@ -30,28 +30,28 @@ import {
   IndyVdrModule,
   IndyVdrPoolConfig,
 } from "@aries-framework/indy-vdr";
-import { indyVdr } from "@hyperledger/indy-vdr-nodejs";
+import { indyVdr } from "@hyperledger-cacti/indy-vdr-nodejs";
 import {
   AnonCredsCredentialFormatService,
   AnonCredsModule,
   AnonCredsProofFormatService,
 } from "@aries-framework/anoncreds";
 import { AnonCredsRsModule } from "@aries-framework/anoncreds-rs";
-import { anoncreds } from "@hyperledger/anoncreds-nodejs";
+import { anoncreds } from "@hyperledger-cacti/anoncreds-nodejs";
 
 import {
   IWebServiceEndpoint,
   IPluginWebService,
   ICactusPlugin,
   ICactusPluginOptions,
-} from "@hyperledger/cactus-core-api";
+} from "@hyperledger-cacti/cactus-core-api";
 import {
   Checks,
   Logger,
   LoggerProvider,
   LogLevelDesc,
   safeStringifyException,
-} from "@hyperledger/cactus-common";
+} from "@hyperledger-cacti/cactus-common";
 
 import OAS from "../json/openapi.json";
 import {
@@ -281,7 +281,7 @@ export class PluginLedgerConnectorAries
   }
 
   public getPackageName(): string {
-    return `@hyperledger/cactus-plugin-ledger-connector-aries`;
+    return `@hyperledger-cacti/cactus-plugin-ledger-connector-aries`;
   }
 
   /**
