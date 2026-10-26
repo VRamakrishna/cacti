@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792676403232,
+  "lastUpdate": 1793027116382,
   "repoUrl": "https://github.com/VRamakrishna/cacti",
   "entries": {
     "Benchmark": [
@@ -1310,6 +1310,42 @@ window.BENCHMARK_DATA = {
             "name": "cmd-api-server_gRPC_GetOpenApiSpecV1",
             "value": 684,
             "range": "±2.16%",
+            "unit": "ops/sec",
+            "extra": "181 samples"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "VRamakrishna",
+            "username": "VRamakrishna",
+            "email": "vramakr2@in.ibm.com"
+          },
+          "committer": {
+            "name": "Rafael Belchior",
+            "username": "RafaelAPB",
+            "email": "RafaelAPB@users.noreply.github.com"
+          },
+          "id": "9195eccc0a1b81112107e3e5be325c85efb95b72",
+          "message": "build(deps): updated vulnerable decompress package\n\nAddresses critical dependabot alert #3745.\nReplaced \"decompress\" npm package with \"@xhmikosr/decompress@11.1.3\".\n\nSigned-off-by: VRamakrishna <vramakr2@in.ibm.com>",
+          "timestamp": "2026-08-06T12:59:22Z",
+          "url": "https://github.com/VRamakrishna/cacti/commit/9195eccc0a1b81112107e3e5be325c85efb95b72"
+        },
+        "date": 1793027114602,
+        "tool": "benchmarkjs",
+        "benches": [
+          {
+            "name": "cmd-api-server_HTTP_GET_getOpenApiSpecV1",
+            "value": 1032,
+            "range": "±3.74%",
+            "unit": "ops/sec",
+            "extra": "180 samples"
+          },
+          {
+            "name": "cmd-api-server_gRPC_GetOpenApiSpecV1",
+            "value": 1088,
+            "range": "±3.89%",
             "unit": "ops/sec",
             "extra": "181 samples"
           }
